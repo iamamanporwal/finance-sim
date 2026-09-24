@@ -12,8 +12,11 @@
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fin/ai": "workspace:*",
     "@fin/formula-engine": "workspace:*",
     "@fin/model-schema": "workspace:*",
+    "@fin/monte-carlo": "workspace:*",
+    "@fin/reports": "workspace:*",
     "@fin/simulation-engine": "workspace:*",
     "@mui/icons-material": "^7.3.11",
     "@mui/material": "^7.3.11",
@@ -23,6 +26,7 @@
     "next": "^16.3.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

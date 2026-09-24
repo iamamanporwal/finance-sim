@@ -2,7 +2,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Link from "next/link";
 
 /** Static marketing page — does not load the engine, canvas or charts. */
 export default function LandingPage() {
@@ -16,7 +15,7 @@ export default function LandingPage() {
         <Box component="pre" sx={{ m: 0, color: "text.secondary", fontSize: 13, lineHeight: 1.6 }}>
           {"Signups → Conversion → Customers → Revenue → Cash"}
         </Box>
-        <Button component={Link} href="/app" variant="contained" size="large">
+        <Button href="/app" variant="contained" size="large">
           Open the simulator
         </Button>
       </Stack>

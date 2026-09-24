@@ -29,12 +29,21 @@ importers:
       '@emotion/styled':
         specifier: ^11.14.1
         version: 11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
+      '@fin/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@fin/formula-engine':
         specifier: workspace:*
         version: link:../../packages/formula-engine
       '@fin/model-schema':
         specifier: workspace:*
         version: link:../../packages/model-schema
+      '@fin/monte-carlo':
+        specifier: workspace:*
+        version: link:../../packages/monte-carlo
+      '@fin/reports':
+        specifier: workspace:*
+        version: link:../../packages/reports
       '@fin/simulation-engine':
         specifier: workspace:*
         version: link:../../packages/simulation-engine
@@ -62,6 +71,9 @@ importers:
       react-dom:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
       zustand:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
@@ -72,6 +84,12 @@ importers:
       '@types/react-dom':
         specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
+
+  packages/ai:
+    dependencies:
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/formula-engine:
     dependencies:
@@ -90,6 +108,27 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+
+  packages/monte-carlo:
+    dependencies:
+      '@fin/model-schema':
+        specifier: workspace:*
+        version: link:../model-schema
+      '@fin/simulation-engine':
+        specifier: workspace:*
+        version: link:../simulation-engine
+
+  packages/reports:
+    dependencies:
+      '@fin/model-schema':
+        specifier: workspace:*
+        version: link:../model-schema
+      '@fin/monte-carlo':
+        specifier: workspace:*
+        version: link:../monte-carlo
+      '@fin/simulation-engine':
+        specifier: workspace:*
+        version: link:../simulation-engine
 
   packages/simulation-engine:
     dependencies:

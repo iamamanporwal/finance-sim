@@ -5,3 +5,7 @@ export { behaviorFor, SimulationError, type NodeBehavior, type NodeRuntime, type
 export * from "./rng";
 export * from "./time";
 export * from "./validation";
+export * from "./bounds";
+export * from "./explain";
+export * from "./scenarios";
+export * from "./sensitivity";

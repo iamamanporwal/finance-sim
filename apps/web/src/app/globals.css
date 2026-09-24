@@ -9,3 +9,18 @@ body {
   width: 9px;
   height: 9px;
 }
+
+@media print {
+  .no-print,
+  .react-flow,
+  nextjs-portal {
+    display: none !important;
+  }
+  .print-root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}

@@ -285,3 +285,23 @@ describe("guardrails", () => {
     expect(codes(r)).toContain("unknown-metric");
   });
 });
+
+describe("scenario overrides respect node ranges", () => {
+  it("flags a scenario that sets conversion above 100%", () => {
+    const r = withChange((m) => m.scenarios!.push({ id: "bad", name: "Bad", overrides: [{ parameterId: "p_conversion", value: 1.5 }] }));
+    expect(r.issues.find((i) => i.scenarioId === "bad" && i.code === "out-of-range")?.message).toBe(
+      'Conversion: Conversion rate in scenario "Bad" must be between 0% and 100%.',
+    );
+  });
+});
+
+describe("AI assumption review status", () => {
+  it("warns about unreviewed AI assumptions and blocks rejected ones", () => {
+    const pending = withChange((m) => Object.assign(m.parameters!.find((p) => p.id === "p_churn")!, { source: "ai", status: "pending" }));
+    expect(pending.valid).toBe(true);
+    expect(pending.issues.find((i) => i.code === "unreviewed-assumption")?.message).toBe('"Monthly churn" was suggested by AI and has not been reviewed yet.');
+    const rejected = withChange((m) => Object.assign(m.parameters!.find((p) => p.id === "p_churn")!, { source: "ai", status: "rejected" }));
+    expect(rejected.valid).toBe(false);
+    expect(codes(rejected)).toContain("rejected-assumption");
+  });
+});

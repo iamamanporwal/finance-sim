@@ -22,6 +22,8 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
   { key: "cash", label: "Cash", unit: "currency", higherIsBetter: true, description: "Cash at the end of the period." },
   { key: "netCashFlow", label: "Net cash flow", unit: "currency", higherIsBetter: true, description: "Cash inflow minus cash outflow in the period." },
   { key: "burn", label: "Burn", unit: "currency", higherIsBetter: false, description: "Net cash spent in the period (0 when cash flow is positive)." },
+  { key: "cac", label: "CAC", unit: "currency", higherIsBetter: false, description: "Customer acquisition cost: marketing spend ÷ new customers in the period." },
+  { key: "cacPaybackMonths", label: "CAC payback", unit: "months", higherIsBetter: false, description: "Months of gross profit from one customer needed to earn back what it cost to acquire them." },
   { key: "runwayMonths", label: "Runway", unit: "months", higherIsBetter: true, description: "Months until cash runs out at the current burn. Empty when not burning." },
 ];
 

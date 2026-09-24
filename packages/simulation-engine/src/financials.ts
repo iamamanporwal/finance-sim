@@ -19,7 +19,13 @@ const numOrNull = (d: Decimal | null) => (d === null ? null : d.toNumber());
  * Aggregation is driven purely by node roles (REVENUE, COST, ACQUISITION,
  * CUSTOMERS, CASH) — never by template-specific logic.
  */
-export function buildTimeline(model: Model, periods: readonly Period[], outputs: Outputs): TimelinePoint[] {
+export function buildTimeline(
+  model: Model,
+  periods: readonly Period[],
+  outputs: Outputs,
+  options: { includeNodeValues?: boolean } = {},
+): TimelinePoint[] {
+  const includeNodeValues = options.includeNodeValues ?? true;
   const months = new Decimal(monthsPerPeriod(model.settings.timeStep));
   const hasCash = model.nodes.some((n) => n.type === "CASH");
 
@@ -81,9 +87,15 @@ export function buildTimeline(model: Model, periods: readonly Period[], outputs:
     const burn = netCashFlow.isNegative() ? netCashFlow.neg() : ZERO;
     const mrr = revenue.subscription.div(months);
     const runwayMonths = !hasCash || burn.isZero() ? null : Decimal.max(ZERO, cash.closing).div(burn).times(months);
+    // CAC = marketing spend ÷ new customers; payback = CAC ÷ (monthly ARPU × gross margin).
+    const marketing = byCategory.marketing ?? ZERO;
+    const cac = marketing.gt(0) && customers.new.gt(0) ? marketing.div(customers.new) : null;
+    const monthlyArpu = customers.closing.gt(0) ? totalRevenue.div(customers.closing).div(months) : null;
+    const monthlyGrossProfitPerCustomer = monthlyArpu && grossMargin && grossMargin.gt(0) ? monthlyArpu.times(grossMargin) : null;
+    const cacPaybackMonths = cac && monthlyGrossProfitPerCustomer ? cac.div(monthlyGrossProfitPerCustomer) : null;
 
     const nodes: Record<string, Record<string, number>> = {};
-    for (const node of model.nodes) {
+    for (const node of includeNodeValues ? model.nodes : []) {
       const values = outputs.get(node.id)?.[i];
       if (values) nodes[node.id] = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, num(v)]));
     }
@@ -127,6 +139,8 @@ export function buildTimeline(model: Model, periods: readonly Period[], outputs:
         netCashFlow: num(netCashFlow),
         burn: num(burn),
         runwayMonths: numOrNull(runwayMonths),
+        cac: numOrNull(cac),
+        cacPaybackMonths: numOrNull(cacPaybackMonths),
       },
       nodes,
     };

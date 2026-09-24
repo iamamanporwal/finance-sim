@@ -136,6 +136,25 @@ export class Simulator {
     return { result: this.buildResult(), recomputed: this.order.filter((id) => dirty.has(id)) };
   }
 
+  /**
+   * Fast path for Monte Carlo and sensitivity analysis: runs the whole model with
+   * extra parameter values (on top of base + scenario + what-if edits) without
+   * re-validating. Callers must keep values within valid bounds (see
+   * parameterBounds). The simulator's own state is restored afterwards.
+   */
+  runWith(overrides: Readonly<Record<string, number | Decimal>>, options: { includeNodeValues?: boolean } = {}): SimulationResult {
+    const saved = this.values;
+    try {
+      this.values = resolveParameterValues(this.model, this.options.scenarioId, { ...this.overrides, ...overrides });
+      this.evaluate(new Set(this.order));
+      return this.buildResult(options.includeNodeValues ?? true);
+    } finally {
+      this.values = saved;
+      // Cached outputs now reflect the overrides; force a full recompute next time.
+      for (const id of this.order) this.dirty.add(id);
+    }
+  }
+
   /** Raw per-period outputs of one node (Decimal precision). */
   nodeOutputs(nodeId: string): readonly PortValues[] | undefined {
     return this.outputs.get(nodeId);
@@ -213,8 +232,8 @@ export class Simulator {
     throw new SimulationError(`${c.node.label}: "${slot.label}" is required but has no value.`, c.node.id, period);
   }
 
-  private buildResult(): SimulationResult {
-    const timeline = buildTimeline(this.model, this.periods, this.outputs);
+  private buildResult(includeNodeValues = true): SimulationResult {
+    const timeline = buildTimeline(this.model, this.periods, this.outputs, { includeNodeValues });
     const scenarioId = this.options.scenarioId ?? null;
     const guardrails = evaluateGuardrails(this.model, timeline);
     const events = [...buildEvents(this.model, timeline), ...guardrailEvents(this.model, guardrails, timeline)].sort((a, b) => a.period - b.period);

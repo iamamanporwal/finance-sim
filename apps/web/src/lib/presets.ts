@@ -1,4 +1,4 @@
-import type { ModelNodeInput, NodeType } from "@fin/model-schema";
+import type { NodeType } from "@fin/model-schema";
 
 export interface PresetParam {
   slot: string;
@@ -90,4 +90,3 @@ export function searchPresets(query: string): NodePreset[] {
     .map(([p]) => p);
 }
 
-export type PresetNode = ModelNodeInput;

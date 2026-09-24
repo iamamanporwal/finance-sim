@@ -1,6 +1,6 @@
 import { checkUnits, Decimal, FormulaError, isKnownUnit, parseFormula } from "@fin/formula-engine";
 import type { z } from "zod";
-import { findOutput, findSlot, FORMULA_RESERVED_VARIABLES, NODE_CATALOG, slotsFor } from "./catalog";
+import { findOutput, findSlot, FORMULA_RESERVED_VARIABLES, NODE_CATALOG, slotsFor, type SlotSpec } from "./catalog";
 import { METRIC_KEYS } from "./metrics";
 import { ModelSchema } from "./schemas";
 import type { Distribution, Model, ModelNode, Parameter } from "./types";
@@ -97,6 +97,7 @@ export function validateParsedModel(model: Model): ValidationIssue[] {
 
   // ── Node → parameter bindings ──
   const paramUsage = new Map<string, string[]>();
+  const slotRanges = new Map<string, { range: NonNullable<SlotSpec["range"]>; what: string; nodeId: string }[]>();
   for (const node of model.nodes) {
     for (const [slotName, paramId] of Object.entries(node.parameters)) {
       const slot = findSlot(node, slotName);
@@ -113,11 +114,23 @@ export function validateParsedModel(model: Model): ValidationIssue[] {
         continue;
       }
       paramUsage.set(paramId, [...(paramUsage.get(paramId) ?? []), node.id]);
-      if (slot.range) issues.push(...checkRange(param, param.value, slot.range, `${node.label}: ${slot.label}`, node.id));
+      if (slot.range) {
+        issues.push(...checkRange(param, param.value, slot.range, `${node.label}: ${slot.label}`, node.id));
+        slotRanges.set(paramId, [...(slotRanges.get(paramId) ?? []), { range: slot.range, what: `${node.label}: ${slot.label}`, nodeId: node.id }]);
+      }
     }
   }
   for (const p of model.parameters) {
-    if (!paramUsage.has(p.id)) warn("unused-parameter", `Assumption "${p.name}" is not used by any node.`, { parameterId: p.id });
+    if (!paramUsage.has(p.id)) {
+      warn("unused-parameter", `Assumption "${p.name}" is not used by any node.`, { parameterId: p.id });
+      continue;
+    }
+    const nodeId = paramUsage.get(p.id)![0];
+    if (p.status === "pending") {
+      warn("unreviewed-assumption", `"${p.name}" was suggested by AI and has not been reviewed yet.`, { parameterId: p.id, nodeId });
+    } else if (p.status === "rejected") {
+      error("rejected-assumption", `"${p.name}" was rejected. Enter your own value or remove it.`, { parameterId: p.id, nodeId });
+    }
   }
 
   // ── Connections ──
@@ -189,7 +202,12 @@ export function validateParsedModel(model: Model): ValidationIssue[] {
       if (o.value === undefined && o.distribution === undefined) {
         warn("empty-override", `Scenario "${s.name}" lists "${p.name}" without changing it.`, ref);
       }
-      if (o.value !== undefined) issues.push(...validateParameter({ ...p, value: o.value, distribution: o.distribution ?? p.distribution }, s));
+      if (o.value !== undefined) {
+        issues.push(...validateParameter({ ...p, value: o.value, distribution: o.distribution ?? p.distribution }, s));
+        for (const r of slotRanges.get(p.id) ?? []) {
+          issues.push(...checkRange(p, o.value, r.range, `${r.what} in scenario "${s.name}"`, r.nodeId).map((i) => ({ ...i, scenarioId: s.id })));
+        }
+      }
     }
   }
   const parentOf = new Map(model.scenarios.map((s) => [s.id, s.parentId]));
