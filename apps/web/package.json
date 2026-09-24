@@ -18,6 +18,7 @@
     "@fin/monte-carlo": "workspace:*",
     "@fin/reports": "workspace:*",
     "@fin/simulation-engine": "workspace:*",
+    "@fin/templates": "workspace:*",
     "@mui/icons-material": "^7.3.11",
     "@mui/material": "^7.3.11",
     "@mui/material-nextjs": "^7.3.10",

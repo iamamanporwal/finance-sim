@@ -1,6 +1,6 @@
 "use client";
 
-import { type Model, type SimulationResult } from "@fin/model-schema";
+import { getMetricDefinition, type Model, type SimulationResult } from "@fin/model-schema";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Accordion from "@mui/material/Accordion";
 import AccordionDetails from "@mui/material/AccordionDetails";
@@ -14,7 +14,8 @@ import Typography from "@mui/material/Typography";
 import { useState, type ReactNode } from "react";
 import Link from "@mui/material/Link";
 import { explainGuardrail } from "@fin/simulation-engine";
-import { formatByUnit, formatCount, formatCurrency, formatMonths, formatPercent, type Currency } from "@/lib/format";
+import { formatByUnit, formatCount, formatCurrency, formatMetric, formatMonths, formatPercent, type Currency } from "@/lib/format";
+import { useEditor } from "@/store/editor-store";
 import { MetricInfo } from "./MetricInfo";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -28,12 +29,18 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function Row({ label, value, strong, metric, indent }: { label: string; value: string; strong?: boolean; metric?: string; indent?: boolean }) {
+function Row({ label, value, strong, metric, indent, period }: { label: string; value: string; strong?: boolean; metric?: string; indent?: boolean; period?: number }) {
+  const openWhy = useEditor((s) => s.openWhy);
   return (
-    <Stack direction="row" sx={{ justifyContent: "space-between", py: 0.4, pl: indent ? 1.5 : 0 }}>
+    <Stack direction="row" sx={{ justifyContent: "space-between", py: 0.4, pl: indent ? 1.5 : 0, "&:hover .why": { opacity: 1 } }}>
       <Typography variant="body2" color={strong ? "text.primary" : "text.secondary"} sx={{ fontWeight: strong ? 600 : 400 }}>
         {label}
         {metric && <MetricInfo metric={metric} />}
+        {metric && period && (
+          <Link component="button" className="why" variant="caption" underline="hover" onClick={() => openWhy({ metric }, period)} sx={{ ml: 0.75, opacity: 0.55, "&:focus-visible": { opacity: 1 } }} aria-label={`Why is ${label} ${value}?`}>
+            Why?
+          </Link>
+        )}
       </Typography>
       <Typography variant="body2" className="num" sx={{ fontWeight: strong ? 600 : 500 }}>
         {value}
@@ -89,14 +96,14 @@ export function PeriodDetail({ model, result, period, currency }: { model: Model
             {revenueParts.map((k) => (
               <Row key={k} indent label={{ subscription: "Subscriptions", usage: "Usage", topups: "Top-ups", other: "Other" }[k]} value={money(p.revenue[k])} />
             ))}
-            <Row strong label="Total revenue" metric="revenue" value={money(p.revenue.total)} />
-            <Row label="MRR" metric="mrr" value={money(p.metrics.mrr ?? 0)} />
+            <Row strong label="Total revenue" metric="revenue" period={period} value={money(p.revenue.total)} />
+            <Row label="MRR" metric="mrr" period={period} value={money(p.metrics.mrr ?? 0)} />
           </Block>
           <Block title="Profitability">
-            <Row label="COGS" metric="cogs" value={money(p.costs.cogs)} />
-            <Row strong label="Gross profit" metric="grossProfit" value={money(p.profit.grossProfit)} />
-            <Row label="Gross margin" metric="grossMargin" value={formatPercent(p.profit.grossMargin)} />
-            <Row label="Operating profit" metric="operatingProfit" value={money(p.profit.operatingProfit)} />
+            <Row label="COGS" metric="cogs" period={period} value={money(p.costs.cogs)} />
+            <Row strong label="Gross profit" metric="grossProfit" period={period} value={money(p.profit.grossProfit)} />
+            <Row label="Gross margin" metric="grossMargin" period={period} value={formatPercent(p.profit.grossMargin)} />
+            <Row label="Operating profit" metric="operatingProfit" period={period} value={money(p.profit.operatingProfit)} />
           </Block>
         </Stack>
 
@@ -106,13 +113,14 @@ export function PeriodDetail({ model, result, period, currency }: { model: Model
               <Row key={k} indent label={CATEGORY_LABELS[k] ?? k} value={money(v)} />
             ))}
             <Row label="COGS" value={money(p.costs.cogs)} />
-            <Row label="Operating expenses" metric="opex" value={money(p.costs.opex)} />
+            <Row label="Operating expenses" metric="opex" period={period} value={money(p.costs.opex)} />
             <Row strong label="Total costs" value={money(p.costs.total)} />
           </Block>
+          <MoreMetrics model={model} p={p} period={period} currency={currency} />
           <Block title="Customer movement">
             <Row label="Starting customers" value={formatCount(p.customers.opening)} />
-            <Row label="New customers" metric="newCustomers" value={`+${formatCount(p.customers.new)}`} />
-            <Row label="Churned" metric="churnedCustomers" value={`−${formatCount(p.customers.churned)}`} />
+            <Row label="New customers" metric="newCustomers" period={period} value={`+${formatCount(p.customers.new)}`} />
+            <Row label="Churned" metric="churnedCustomers" period={period} value={`−${formatCount(p.customers.churned)}`} />
             <Row strong label="Ending customers" value={formatCount(p.customers.closing)} />
           </Block>
         </Stack>
@@ -124,15 +132,15 @@ export function PeriodDetail({ model, result, period, currency }: { model: Model
                 <Row label="Opening cash" value={money(p.cash.opening)} />
                 <Row indent label="Cash in" value={`+${money(p.cash.inflow)}`} />
                 <Row indent label="Cash out" value={`−${money(p.cash.outflow)}`} />
-                <Row strong label="Closing cash" metric="cash" value={money(p.cash.closing)} />
+                <Row strong label="Closing cash" metric="cash" period={period} value={money(p.cash.closing)} />
               </>
             ) : (
               <Typography variant="body2" color="text.secondary">
                 No Cash node in this model.
               </Typography>
             )}
-            <Row label="Burn" metric="burn" value={(p.metrics.burn ?? 0) > 0 ? money(p.metrics.burn!) : "Not burning"} />
-            <Row label="Runway" metric="runwayMonths" value={hasCash ? formatMonths(p.metrics.runwayMonths) : "—"} />
+            <Row label="Burn" metric="burn" period={period} value={(p.metrics.burn ?? 0) > 0 ? money(p.metrics.burn!) : "Not burning"} />
+            <Row label="Runway" metric="runwayMonths" period={period} value={hasCash ? formatMonths(p.metrics.runwayMonths) : "—"} />
           </Block>
           {guardrails.length > 0 && (
             <Block title="Guardrails">
@@ -194,5 +202,30 @@ function GuardrailWhy({ model, result, guardrailId, period }: { model: Model; re
         </Typography>
       )}
     </Box>
+  );
+}
+
+const EXTRA_METRICS = ["contribution", "contributionMargin", "newMrr", "nrr", "nrrAnnual", "cac", "cacPaybackMonths", "deferredRevenue", "creditBalance", "creditsBurned", "creditsExpired", "burnDepth", "breakageRate", "rationingRate"];
+
+/** Metrics that only some models produce (credits, deferred revenue, NRR) plus the model's custom metrics. */
+function MoreMetrics({ model, p, period, currency }: { model: Model; p: SimulationResult["timeline"][number]; period: number; currency: Currency }) {
+  const keys = [...EXTRA_METRICS, ...model.customMetrics.map((c) => c.key)].filter((k) => p.metrics[k] !== null && p.metrics[k] !== undefined && !(k === "deferredRevenue" && p.metrics[k] === 0));
+  if (keys.length === 0) return null;
+  return (
+    <Block title="Unit economics & credits">
+      {keys.map((k) => {
+        const def = getMetricDefinition(k, model.customMetrics);
+        const cm = model.customMetrics.find((c) => c.key === k);
+        return (
+          <Row
+            key={k}
+            label={`${def?.label ?? k}${cm?.status === "needs_confirmation" ? " (unconfirmed)" : ""}`}
+            metric={k}
+            period={period}
+            value={k === "cacPaybackMonths" ? formatMonths(p.metrics[k] ?? null, "—") : formatMetric(k, p.metrics[k], currency, model.customMetrics)}
+          />
+        );
+      })}
+    </Block>
   );
 }

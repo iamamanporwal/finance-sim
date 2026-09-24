@@ -7,6 +7,7 @@ import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
+import { applyAutoLayout } from "@fin/model-schema";
 import { searchPresets } from "@/lib/presets";
 import { useCopilot } from "@/store/copilot-store";
 import { useEditor } from "@/store/editor-store";
@@ -36,13 +37,22 @@ export function CommandPalette() {
       { id: "scenario", label: "Create scenario", run: () => s().setResultsTab("scenarios") },
       { id: "sensitivity", label: "What matters most?", run: () => s().setResultsTab("sensitivity") },
       { id: "report", label: "Open report", run: () => s().setMode("report") },
+      { id: "why-mrr", label: "Why is MRR this value?", hint: "Why?", run: () => { s().setMode("results"); s().openWhy({ metric: "mrr" }); } },
+      { id: "why-cash", label: "Why is cash this value?", hint: "Why?", run: () => { s().setMode("results"); s().openWhy({ metric: "cash" }); } },
+      { id: "business", label: "Business stage & goals", run: () => s().openBusiness("profile") },
+      { id: "current", label: "Enter current state (today's numbers)", run: () => s().openBusiness("current") },
+      { id: "actuals", label: "Enter or paste actuals", run: () => s().openBusiness("actuals") },
+      { id: "metrics", label: "Custom metrics", run: () => s().openBusiness("metrics") },
       { id: "revenue", label: "Show revenue", run: () => s().setMode("results") },
       { id: "cash", label: "Show cash", run: () => s().setMode("results") },
       { id: "build", label: "Go to canvas (Build)", run: () => s().setMode("build") },
+      { id: "layout", label: "Tidy up layout", hint: "auto-arrange", run: () => { s().setMode("build"); s().apply((m) => applyAutoLayout(m), { structural: false }); } },
       { id: "settings", label: "Simulation settings", run: () => s().setMode("simulate") },
       { id: "undo", label: "Undo", hint: "⌘Z", run: () => s().undo() },
       { id: "redo", label: "Redo", hint: "⌘⇧Z", run: () => s().redo() },
-      { id: "save", label: "Save", hint: "⌘S", run: () => s().save() },
+      { id: "save", label: "Save version", hint: "⌘S", run: () => s().save({ version: "manual" }) },
+      { id: "versions", label: "Version history", run: () => s().setPanel("versions") },
+      { id: "export", label: "Export (JSON, CSV, PDF)", run: () => s().setPanel("export") },
     ];
     const q = query.trim().toLowerCase();
     const matching = base.filter((c) => !q || c.label.toLowerCase().includes(q));

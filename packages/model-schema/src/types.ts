@@ -1,6 +1,10 @@
 import type { z } from "zod";
 import type {
+  ActualPointSchema,
   ConnectionSchema,
+  CurrentStateSchema,
+  CustomMetricSchema,
+  ModelVersionSchema,
   DistributionSchema,
   GuardrailResultSchema,
   GuardrailSchema,
@@ -60,6 +64,10 @@ export type MetricDefinition = z.output<typeof MetricDefinitionSchema>;
 export type ReportSection = z.output<typeof ReportSectionSchema>;
 export type Report = z.output<typeof ReportSchema>;
 export type Template = z.output<typeof TemplateSchema>;
+export type CustomMetric = z.output<typeof CustomMetricSchema>;
+export type CurrentState = z.output<typeof CurrentStateSchema>;
+export type ActualPoint = z.output<typeof ActualPointSchema>;
+export type ModelVersion = z.output<typeof ModelVersionSchema>;
 
 /** Input shapes — what may be written by hand, by a template or by the AI (defaults optional). */
 export type ModelInput = z.input<typeof ModelSchema>;

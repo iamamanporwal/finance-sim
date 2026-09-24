@@ -47,6 +47,9 @@ importers:
       '@fin/simulation-engine':
         specifier: workspace:*
         version: link:../../packages/simulation-engine
+      '@fin/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       '@mui/icons-material':
         specifier: ^7.3.11
         version: 7.3.11(@mui/material@7.3.11(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
@@ -141,6 +144,16 @@ importers:
       decimal.js:
         specifier: ^10.6.0
         version: 10.6.0
+
+  packages/templates:
+    dependencies:
+      '@fin/model-schema':
+        specifier: workspace:*
+        version: link:../model-schema
+    devDependencies:
+      '@fin/simulation-engine':
+        specifier: workspace:*
+        version: link:../simulation-engine
 
 packages:
 

@@ -37,7 +37,7 @@ export interface OutputSpec {
   lagged?: boolean;
 }
 
-export type FinancialRole = "revenue" | "cost" | "cash" | "customers" | "acquisition";
+export type FinancialRole = "revenue" | "cost" | "cash" | "customers" | "acquisition" | "credits";
 
 export interface NodeTypeSpec {
   type: NodeType;
@@ -146,7 +146,7 @@ export const NODE_CATALOG: Readonly<Record<NodeType, NodeTypeSpec>> = {
     label: "Customers",
     category: "customers",
     description: "A stock of customers: grows with new customers, shrinks with churn.",
-    formula: "closing = opening + new − opening × churn rate − moved out",
+    formula: "closing = opening + new + moved in − opening × churn rate − moved out",
     role: "customers",
     stateful: true,
     slots: [
@@ -157,6 +157,10 @@ export const NODE_CATALOG: Readonly<Record<NodeType, NodeTypeSpec>> = {
         ...value("moved", "Moved out", "Customers moving to another plan (upgrades/downgrades)", { required: false, default: 0, multiple: true, parameter: false }),
         kind: "count",
       },
+      {
+        ...value("movedIn", "Moved in", "Customers arriving from another plan (upgrades/downgrades). Not counted as new customers.", { required: false, default: 0, multiple: true, parameter: false }),
+        kind: "count",
+      },
     ],
     outputs: [
       { name: "out", label: "Customers", description: "Customers at the end of the period" },
@@ -164,6 +168,7 @@ export const NODE_CATALOG: Readonly<Record<NodeType, NodeTypeSpec>> = {
       { name: "new", label: "New customers", description: "Customers added this period" },
       { name: "churned", label: "Churned customers", description: "Customers lost this period" },
       { name: "moved", label: "Moved out", description: "Customers moved to another plan this period" },
+      { name: "movedIn", label: "Moved in", description: "Customers arriving from another plan this period" },
     ],
   },
   CHURN: {
@@ -214,7 +219,7 @@ export const NODE_CATALOG: Readonly<Record<NodeType, NodeTypeSpec>> = {
     label: "Cost",
     category: "costs",
     description: "A fixed, variable, percentage or step cost.",
-    formula: "fixed: amount × (1 + growth)^(t − 1) · variable: volume × unit cost · percentage: base × rate · step: tier cost for volume",
+    formula: "fixed: amount × (1 + growth)^(t − 1) · variable: volume × unit cost · percentage: base × rate · step: tier cost for volume · capacity: ⌈volume ÷ capacity per unit⌉ × cost per unit",
     role: "cost",
     slots: [], // dynamic: depends on costType
     outputs: [OUT],
@@ -305,6 +310,56 @@ export const NODE_CATALOG: Readonly<Record<NodeType, NodeTypeSpec>> = {
     slots: [], // dynamic: one per variable in the expression
     outputs: [OUT],
   },
+  CREDIT_WALLET: {
+    type: "CREDIT_WALLET",
+    label: "Credit Wallet",
+    category: "resources",
+    description: "Credits customers hold: granted with plans or bought as top-ups, burned by usage, and expiring when unused (breakage).",
+    formula:
+      "available = opening + grants + purchases · burned = min(demand, available) · rationed = demand − burned · expired = (available − burned) × expiry rate · closing = available − burned − expired",
+    role: "credits",
+    stateful: true,
+    slots: [
+      value("initial", "Starting balance", "Credits held before the first period", { required: false, connectable: false, default: 0, range: NON_NEGATIVE }),
+      value("grants", "Credit grants", "Credits granted this period (e.g. included in plans)", { required: false, default: 0, multiple: true, range: NON_NEGATIVE }),
+      value("purchases", "Credits purchased", "Credits bought as top-ups this period", { required: false, default: 0, multiple: true, range: NON_NEGATIVE }),
+      value("demand", "Credit demand", "Credits customers try to use this period", { required: false, default: 0, multiple: true, range: NON_NEGATIVE }),
+      rate("expiryRate", "Expiry rate", "Share of unused credits that expire at the end of each period (breakage)", { required: false, default: 0, range: PROBABILITY }),
+      value("maximum", "Maximum balance", "Credits above this cap expire", { required: false, connectable: false, range: NON_NEGATIVE }),
+    ],
+    outputs: [
+      { name: "out", label: "Closing balance", description: "Credits left at the end of the period" },
+      { name: "opening", label: "Opening balance", description: "Credits at the start of the period", lagged: true },
+      { name: "inflow", label: "Credits added", description: "Grants + purchases" },
+      { name: "burned", label: "Credits burned", description: "Credits actually used: min(demand, available)" },
+      { name: "rationed", label: "Credits rationed", description: "Demand that could not be served because the wallet ran dry" },
+      { name: "expired", label: "Credits expired", description: "Unused credits that expired (breakage)" },
+      { name: "burnDepth", label: "Burn depth", description: "Burned ÷ available credits" },
+      { name: "rationingRate", label: "Rationing rate", description: "Rationed ÷ demand" },
+      { name: "breakageRate", label: "Breakage rate", description: "Expired ÷ available credits" },
+    ],
+  },
+  REVENUE_RECOGNITION: {
+    type: "REVENUE_RECOGNITION",
+    label: "Revenue Recognition",
+    category: "revenue",
+    description: "Cash billed in advance is deferred and recognized as revenue when earned (e.g. when prepaid credits are used or expire).",
+    formula: "available = opening deferred + billed · recognized = min(available, to recognize + opening × recognition rate) · closing deferred = available − recognized",
+    role: "revenue",
+    stateful: true,
+    slots: [
+      { ...value("initial", "Opening deferred revenue", "Deferred revenue before the first period", { required: false, connectable: false, default: 0, range: NON_NEGATIVE }), kind: "money" },
+      { ...value("billed", "Billed", "Cash billed in advance this period (connect the same flow to Cash inflow)", { required: false, default: 0, multiple: true }), kind: "money" },
+      { ...value("recognize", "To recognize", "Amount earned this period, e.g. credits used × price per credit", { required: false, default: 0, multiple: true }), kind: "money" },
+      rate("recognitionRate", "Recognition rate", "Share of the opening deferred balance recognized each period (e.g. 1/12 for annual plans)", { required: false, default: 0, range: PROBABILITY }),
+    ],
+    outputs: [
+      { name: "out", label: "Recognized revenue", description: "Revenue recognized this period" },
+      { name: "deferred", label: "Deferred revenue", description: "Billed but not yet recognized, at the end of the period" },
+      { name: "opening", label: "Opening deferred", description: "Deferred revenue at the start of the period", lagged: true },
+      { name: "billed", label: "Billed", description: "Cash billed this period" },
+    ],
+  },
 };
 
 /** Names every formula can use without wiring. */
@@ -324,7 +379,18 @@ const COST_SLOTS: Record<string, SlotSpec[]> = {
     rate("rate", "Percentage", "Share of the base", { range: PROBABILITY }),
   ],
   step: [{ ...value("volume", "Volume", "Units that select the cost tier", { multiple: true }), kind: "count" }],
+  capacity: [
+    { ...value("volume", "Volume", "Load to serve (accounts, users, requests)", { multiple: true }), kind: "count" },
+    value("capacityPerUnit", "Capacity per unit", "How much one unit of the resource can serve (e.g. 120 accounts per guardian)", { range: { min: Number.MIN_VALUE, message: "must be greater than zero" } }),
+    { ...value("unitCost", "Cost per unit", "Cost of one unit of the resource per period", { range: NON_NEGATIVE }), kind: "money" },
+  ],
 };
+
+const CAPACITY_COST_OUTPUTS: OutputSpec[] = [
+  { name: "out", label: "Cost", description: "Units needed × cost per unit" },
+  { name: "units", label: "Units needed", description: "⌈volume ÷ capacity per unit⌉" },
+  { name: "utilization", label: "Utilization", description: "Volume ÷ (units × capacity per unit)" },
+];
 
 /** Returns the formula's variables, or an empty list when it does not parse (validators report that separately). */
 export function formulaVariables(expression: string): string[] {
@@ -364,6 +430,7 @@ export function outputsFor(node: ModelNode): OutputSpec[] {
   if (node.type === "SPLIT") {
     return node.config.branches.map((b) => ({ name: b.key, label: b.label, description: `Share routed to ${b.label}` }));
   }
+  if (node.type === "COST" && node.config.costType === "capacity") return CAPACITY_COST_OUTPUTS;
   return NODE_CATALOG[node.type].outputs;
 }
 

@@ -99,12 +99,13 @@ const BEHAVIORS: { [T in NodeType]: NodeBehavior<T> } = {
       if (added.isNegative()) fail(node, rt, `new customers is negative (${added.toDecimalPlaces(2).toString()}).`);
       if (churnRate.isNegative() || churnRate.gt(1)) fail(node, rt, "churn rate must be between 0% and 100%.");
       const moved = rt.input("moved");
-      if (moved.isNegative()) fail(node, rt, "moved-out customers is negative.");
+      const movedIn = rt.input("movedIn");
+      if (moved.isNegative() || movedIn.isNegative()) fail(node, rt, "customers moved between plans is negative.");
       const churned = opening.times(churnRate);
-      const closing = opening.plus(added).minus(churned).minus(moved);
+      const closing = opening.plus(added).plus(movedIn).minus(churned).minus(moved);
       if (closing.isNegative()) fail(node, rt, "more customers churned or moved out than were available.");
       rt.state.closing = closing;
-      return { out: closing, opening, new: added, churned, moved, inflow: added, outflow: churned.plus(moved) };
+      return { out: closing, opening, new: added, churned, moved, movedIn, inflow: added.plus(movedIn), outflow: churned.plus(moved) };
     },
   },
 
@@ -138,7 +139,7 @@ const BEHAVIORS: { [T in NodeType]: NodeBehavior<T> } = {
   },
 
   COST: {
-    evaluate(node, rt) {
+    evaluate(node, rt): PortValues {
       const { costType, startPeriod, endPeriod, tiers } = node.config;
       const start = startPeriod ?? 1;
       if (rt.period < start || (endPeriod !== undefined && rt.period > endPeriod)) return { out: ZERO };
@@ -154,6 +155,14 @@ const BEHAVIORS: { [T in NodeType]: NodeBehavior<T> } = {
           const tier = (tiers ?? []).find((t) => t.upTo === undefined || volume.lte(t.upTo));
           if (!tier) return fail(node, rt, `volume ${volume.toDecimalPlaces(2).toString()} exceeds the highest tier. Add an open-ended tier.`);
           return { out: new Decimal(tier.cost) };
+        }
+        case "capacity": {
+          const volume = rt.input("volume");
+          const per = rt.input("capacityPerUnit");
+          if (per.lte(0)) return fail(node, rt, "capacity per unit must be greater than zero.");
+          if (volume.isNegative()) return fail(node, rt, "volume is negative.");
+          const units = volume.div(per).ceil();
+          return { out: units.times(rt.input("unitCost")), units, utilization: units.isZero() ? ZERO : volume.div(units.times(per)) };
         }
       }
     },
@@ -225,6 +234,65 @@ const BEHAVIORS: { [T in NodeType]: NodeBehavior<T> } = {
       const t = rt.input("threshold");
       const active = compare(v, node.config.operator, t);
       return { out: active ? rt.input("then") : rt.input("else"), active: active ? ONE : ZERO };
+    },
+  },
+
+  CREDIT_WALLET: {
+    open: stockOpening,
+    evaluate(node, rt) {
+      const opening = rt.opening;
+      const grants = rt.input("grants");
+      const purchases = rt.input("purchases");
+      const demand = rt.input("demand");
+      const expiryRate = rt.input("expiryRate");
+      if (grants.isNegative() || purchases.isNegative()) fail(node, rt, "credits added must not be negative.");
+      if (demand.isNegative()) fail(node, rt, "credit demand must not be negative.");
+      if (expiryRate.isNegative() || expiryRate.gt(1)) fail(node, rt, "expiry rate must be between 0% and 100%.");
+      const inflow = grants.plus(purchases);
+      const available = opening.plus(inflow);
+      const burned = Decimal.min(demand, available);
+      const rationed = demand.minus(burned);
+      const unused = available.minus(burned);
+      let expired = unused.times(expiryRate);
+      let closing = unused.minus(expired);
+      if (rt.has("maximum")) {
+        const max = rt.input("maximum");
+        if (closing.gt(max)) {
+          expired = expired.plus(closing.minus(max));
+          closing = max;
+        }
+      }
+      rt.state.closing = closing;
+      const share = (a: Decimal, b: Decimal) => (b.gt(0) ? a.div(b) : ZERO);
+      return {
+        out: closing,
+        opening,
+        inflow,
+        burned,
+        rationed,
+        expired,
+        burnDepth: share(burned, available),
+        rationingRate: share(rationed, demand),
+        breakageRate: share(expired, available),
+      };
+    },
+  },
+
+  REVENUE_RECOGNITION: {
+    open: stockOpening,
+    evaluate(node, rt) {
+      const opening = rt.opening;
+      const billed = rt.input("billed");
+      const toRecognize = rt.input("recognize");
+      const rate = rt.input("recognitionRate");
+      if (billed.isNegative() || toRecognize.isNegative()) fail(node, rt, "billed and recognized amounts must not be negative.");
+      if (rate.isNegative() || rate.gt(1)) fail(node, rt, "recognition rate must be between 0% and 100%.");
+      const available = opening.plus(billed);
+      // Revenue can never be recognized before it has been billed.
+      const recognized = Decimal.min(available, toRecognize.plus(opening.times(rate)));
+      const deferred = available.minus(recognized);
+      rt.state.closing = deferred;
+      return { out: recognized, deferred, opening, billed };
     },
   },
 

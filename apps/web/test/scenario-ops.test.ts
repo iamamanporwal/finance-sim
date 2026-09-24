@@ -61,7 +61,7 @@ describe("guardrails", () => {
   it("adds guardrails with readable labels", () => {
     let m: Model = { ...base(), guardrails: [] };
     for (const s of so.GUARDRAIL_SUGGESTIONS) m = so.addGuardrail(m, s);
-    expect(m.guardrails.map((g) => g.label)).toEqual(["Gross margin > 55%", "Runway > 6 months", "Churn rate < 8%", "CAC payback < 12 months", "Cash > $0"]);
+    expect(m.guardrails.map((g) => g.label)).toEqual(["Gross margin > 55%", "Runway > 6 months", "Churn rate < 8%", "CAC payback < 12 months", "Cash > $0", "Breakage < 8%", "Rationing < 15%", "NRR (monthly) >= 100%"]);
     expect(validateForSimulation(m).valid).toBe(true);
   });
   it("keeps auto labels in sync, but not custom labels", () => {

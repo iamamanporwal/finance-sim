@@ -7,9 +7,9 @@ describe("node library", () => {
   it("contains the plan's basic nodes in each group", () => {
     const byGroup = (g: string) => NODE_PRESETS.filter((p) => p.group === g).map((p) => p.label);
     expect(byGroup("Customers")).toEqual(["Acquisition", "Conversion", "Customers", "Churn", "Upgrade", "Downgrade", "Split"]);
-    expect(byGroup("Revenue")).toEqual(["Price", "Subscription", "Usage", "Top-up"]);
-    expect(byGroup("Costs")).toEqual(["Fixed Cost", "Variable Cost", "Percentage Cost", "Step Cost"]);
-    expect(byGroup("Resources")).toEqual(["Cash", "Pool", "Flow", "Burn", "Capacity"]);
+    expect(byGroup("Revenue")).toEqual(["Price", "Subscription", "Usage", "Revenue Recognition", "Breakage", "Top-up"]);
+    expect(byGroup("Costs")).toEqual(["Fixed Cost", "Variable Cost", "Percentage Cost", "Usage Cost", "Standing Charge", "Capacity Pool", "Step Cost"]);
+    expect(byGroup("Resources")).toEqual(["Cash", "Pool", "Flow", "Burn", "Credit Wallet", "Credit Grant", "Credit Burn", "Capacity"]);
     expect(byGroup("Logic")).toEqual(["Condition", "Trigger", "Formula"]);
     for (const g of LIBRARY_GROUPS) expect(byGroup(g).length).toBeGreaterThan(0);
   });

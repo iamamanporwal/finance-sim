@@ -1,4 +1,4 @@
-import { checkUnits, Decimal, FormulaError, isKnownUnit, parseFormula } from "@fin/formula-engine";
+import { checkUnits, collectIdentifiers, Decimal, FormulaError, isKnownUnit, parseFormula } from "@fin/formula-engine";
 import type { z } from "zod";
 import { findOutput, findSlot, FORMULA_RESERVED_VARIABLES, NODE_CATALOG, slotsFor, type SlotSpec } from "./catalog";
 import { METRIC_KEYS } from "./metrics";
@@ -224,9 +224,58 @@ export function validateParsedModel(model: Model): ValidationIssue[] {
     }
   }
 
+  // ── Custom metrics ──
+  const metricKeys = new Set(METRIC_KEYS);
+  for (const cm of model.customMetrics) {
+    const what = `Custom metric "${cm.label}"`;
+    if (metricKeys.has(cm.key)) {
+      error("duplicate-metric", `${what}: the key "${cm.key}" is already used${METRIC_KEYS.has(cm.key) ? " by a built-in metric" : ""}.`);
+      continue;
+    }
+    try {
+      const variables = [...collectIdentifiers(parseFormula(cm.expression))].filter((v) => !FORMULA_RESERVED_VARIABLES.has(v));
+      for (const v of variables) {
+        if (!cm.inputs[v]) error("missing-input", `${what}: "${v}" is used in the formula but not linked to a metric or node.`);
+      }
+      for (const [name, input] of Object.entries(cm.inputs)) {
+        if ("metric" in input) {
+          if (!metricKeys.has(input.metric)) error("unknown-metric", `${what}: input "${name}" refers to unknown metric "${input.metric}" (custom metrics can only use metrics defined before them).`);
+        } else {
+          const n = nodes.get(input.nodeId);
+          if (!n) error("missing-node", `${what}: input "${name}" refers to a missing node "${input.nodeId}".`);
+          else if (!findOutput(n, input.port)) error("invalid-port", `${what}: ${n.label} has no output "${input.port}".`, { nodeId: n.id });
+        }
+      }
+    } catch (e) {
+      if (e instanceof FormulaError) error("invalid-formula", `${what}: ${e.message}`);
+      else throw e;
+    }
+    if (cm.status === "needs_confirmation") warn("unconfirmed-metric", `${what} uses a placeholder definition that has not been confirmed.`);
+    metricKeys.add(cm.key);
+  }
+
   // ── Guardrails ──
   for (const g of model.guardrails) {
-    if (!METRIC_KEYS.has(g.metric)) error("unknown-metric", `Guardrail "${g.label}" uses an unknown metric "${g.metric}".`);
+    if (!metricKeys.has(g.metric)) error("unknown-metric", `Guardrail "${g.label}" uses an unknown metric "${g.metric}".`);
+  }
+
+  // ── Actuals ──
+  const actualPeriods = new Set<string>();
+  for (const a of model.actuals) {
+    if (actualPeriods.has(a.period)) error("duplicate-actual", `Actuals for ${a.period} are entered more than once.`);
+    actualPeriods.add(a.period);
+    for (const [field, v] of Object.entries(a.values)) {
+      if (v !== undefined && v < 0 && field !== "cash") error("out-of-range", `Actual ${field} for ${a.period} must not be negative.`);
+    }
+  }
+
+  // ── Current state ──
+  const cs = model.currentState;
+  if (cs) {
+    for (const k of ["mrr", "customers", "monthlyExpenses"] as const) {
+      if (cs[k] !== undefined && cs[k]! < 0) error("out-of-range", `Current state: ${k} must not be negative.`);
+    }
+    if (cs.churn !== undefined && (cs.churn < 0 || cs.churn > 1)) error("out-of-range", "Current state: churn must be between 0% and 100%.");
   }
 
   return issues;

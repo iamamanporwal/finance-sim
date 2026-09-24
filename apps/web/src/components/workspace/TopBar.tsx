@@ -1,6 +1,10 @@
 "use client";
 
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import Menu from "@mui/material/Menu";
+import { useState } from "react";
+import BusinessCenterOutlinedIcon from "@mui/icons-material/BusinessCenterOutlined";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RedoIcon from "@mui/icons-material/Redo";
 import UndoIcon from "@mui/icons-material/Undo";
@@ -57,7 +61,13 @@ export function TopBar() {
         <Tab value="report" label="Report" />
       </Tabs>
       <Box sx={{ flex: 1 }} />
+      <Tooltip title="Stage, goals, today's numbers, actuals and custom metrics" describeChild>
+        <Button size="small" startIcon={<BusinessCenterOutlinedIcon />} onClick={() => useEditor.getState().openBusiness(useEditor.getState().model?.metadata.stage ? "current" : "profile")}>
+          Business
+        </Button>
+      </Tooltip>
       <ScenarioSelect />
+      <MoreMenu />
       <Stack direction="row" spacing={0.5}>
         <Tooltip title="Undo (⌘Z)">
           <span>
@@ -119,5 +129,26 @@ function ScenarioSelect() {
         Manage scenarios…
       </MenuItem>
     </TextField>
+  );
+}
+
+function MoreMenu() {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const s = useEditor.getState;
+  const close = () => setAnchor(null);
+  return (
+    <>
+      <Tooltip title="Save, versions, export">
+        <IconButton size="small" aria-label="More actions" aria-haspopup="menu" onClick={(e) => setAnchor(e.currentTarget)}>
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Menu anchorEl={anchor} open={!!anchor} onClose={close}>
+        <MenuItem onClick={() => { close(); s().save({ version: "manual" }); }}>Save version (⌘S)</MenuItem>
+        <MenuItem onClick={() => { close(); s().setPanel("versions"); }}>Version history…</MenuItem>
+        <MenuItem onClick={() => { close(); s().setPanel("export"); }}>Export (JSON, CSV, PDF)…</MenuItem>
+        <MenuItem onClick={() => { close(); s().openBusiness("metrics"); }}>Custom metrics…</MenuItem>
+      </Menu>
+    </>
   );
 }

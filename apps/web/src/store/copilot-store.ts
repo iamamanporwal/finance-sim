@@ -1,7 +1,8 @@
 "use client";
 
-import { AIProviderError, runAgent, type ChatMessage } from "@fin/ai";
+import { AIProviderError, runAgent, type AgentEvent, type ChatMessage } from "@fin/ai";
 import { create } from "zustand";
+import { requiresTools, TOOL_NUDGE } from "@/ai/intent";
 import { COPILOT_SYSTEM_PROMPT } from "@/ai/prompts";
 import { createCopilotTools } from "@/ai/tools";
 import { createProvider, effectiveModel } from "@/lib/ai-client";
@@ -49,7 +50,7 @@ export const useCopilot = create<CopilotState>((set, get) => ({
         useEditor.getState().apply(() => next);
         useEditor.getState().notify(summary, "info");
       },
-      runMonteCarlo: (o) => useEditor.getState().runMonteCarlo(o),
+      runMonteCarlo: (o, scenarioId) => useEditor.getState().runMonteCarlo(o, scenarioId),
     });
     const m = editor.model;
     const scenario = m.scenarios.find((s) => s.id === editor.activeScenarioId);
@@ -60,14 +61,7 @@ export const useCopilot = create<CopilotState>((set, get) => ({
       const provider = createProvider();
       const model = effectiveModel(await provider.status());
       if (!model) throw new Error("No local AI model is available. Open AI settings to check the connection.");
-      const r = await runAgent({
-        provider,
-        model,
-        tools,
-        signal: controller.signal,
-        maxSteps: 10,
-        messages: [{ role: "system", content: `${COPILOT_SYSTEM_PROMPT}\n\n${context}` }, ...get().history, user],
-        onEvent: (e) => {
+      const onEvent = (e: AgentEvent) => {
           if (e.type === "tool-call") set((s) => ({ items: [...s.items, { kind: "tool", name: e.call.name, args: e.call.arguments }] }));
           if (e.type === "tool-result")
             set((s) => {
@@ -81,12 +75,24 @@ export const useCopilot = create<CopilotState>((set, get) => ({
               }
               return { items };
             });
-        },
+      };
+      let r = await runAgent({
+        provider,
+        model,
+        tools,
+        signal: controller.signal,
+        maxSteps: 10,
+        messages: [{ role: "system", content: `${COPILOT_SYSTEM_PROMPT}\n\n${context}` }, ...get().history, user],
+        onEvent,
       });
+      // "Do not just answer conversationally": a what-if or change must be executed with tools.
+      if (r.toolRuns.length === 0 && requiresTools(text)) {
+        r = await runAgent({ provider, model, tools, signal: controller.signal, maxSteps: 10, messages: [...r.messages, { role: "user", content: TOOL_NUDGE }], onEvent });
+      }
       set((s) => ({
         items: r.final ? [...s.items, { kind: "assistant", text: r.final }] : s.items,
         // Keep the conversation (without the system prompt) for follow-up questions.
-        history: r.messages.filter((x) => x.role !== "system").slice(-MAX_HISTORY),
+        history: r.messages.filter((x) => x.role !== "system" && x.content !== TOOL_NUDGE).slice(-MAX_HISTORY),
       }));
     } catch (e) {
       const message = controller?.signal.aborted ? "Stopped." : e instanceof AIProviderError || e instanceof Error ? e.message : String(e);

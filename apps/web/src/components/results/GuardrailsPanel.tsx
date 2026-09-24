@@ -1,6 +1,6 @@
 "use client";
 
-import { METRIC_DEFINITIONS, getMetricDefinition, type Guardrail } from "@fin/model-schema";
+import { getMetricDefinition, metricDefinitionsFor, type Guardrail } from "@fin/model-schema";
 import { explainGuardrail } from "@fin/simulation-engine";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -30,7 +30,9 @@ export default function GuardrailsPanel() {
   const [focus, setFocus] = useState<{ guardrailId: string; period: number } | null>(null);
   const currency = model.settings.currency;
   const existing = new Set(model.guardrails.map((g) => `${g.metric}${g.operator}${g.threshold}`));
-  const suggestions = GUARDRAIL_SUGGESTIONS.filter((s) => !existing.has(`${s.metric}${s.operator}${s.threshold}`));
+  // Only suggest guardrails on metrics this model actually produces (no credit rules without credits).
+  const produced = (metric: string) => !result || result.timeline.some((p) => p.metrics[metric] !== null && p.metrics[metric] !== undefined);
+  const suggestions = GUARDRAIL_SUGGESTIONS.filter((s) => !existing.has(`${s.metric}${s.operator}${s.threshold}`) && produced(s.metric));
   const explanation = focus && result ? explainGuardrail(model, result, focus.guardrailId, focus.period) : null;
 
   return (
@@ -135,13 +137,14 @@ export default function GuardrailsPanel() {
 }
 
 function GuardrailRow({ g, currency, onChange, onRemove }: { g: Guardrail; currency: string; onChange(p: Partial<Guardrail>): void; onRemove(): void }) {
-  const unit = getMetricDefinition(g.metric)?.unit;
+  const model = useEditor((s) => s.model)!;
+  const unit = getMetricDefinition(g.metric, model.customMetrics)?.unit;
   const scale = unit === "percent" ? 100 : 1;
   return (
     <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ alignItems: { md: "center" } }}>
       <Switch size="small" checked={g.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} slotProps={{ input: { "aria-label": `Enable ${g.label}` } }} />
       <TextField select size="small" label="Metric" value={g.metric} onChange={(e) => onChange({ metric: e.target.value })} sx={{ minWidth: 180 }}>
-        {METRIC_DEFINITIONS.map((m) => (
+        {metricDefinitionsFor(model).map((m) => (
           <MenuItem key={m.key} value={m.key}>
             {m.label}
           </MenuItem>

@@ -29,7 +29,19 @@ See [PRD.TXT](PRD.TXT) for the product and [Plan.txt](Plan.txt) for the phased b
 | 18 | AI tool calling (copilot with 19 validated tools) | Done |
 | 19 | AI repair loop (max 3 repairs) | Done |
 | 20 | AI assumption review (accept/edit/reject) | Done |
-| 21+ | "Why?", what-if commands, current state, templates… | Not started |
+| 21 | AI "Why?" (engine causal tree + grounding-checked AI explanation) | Done |
+| 22 | AI "What if?" (what_if, compare_options, standard scenarios, 10,000-run Monte Carlo) | Done |
+| 23 | Current state, shown separately from the forecast | Done |
+| 24 | Actuals vs forecast (entry, CSV paste, A │ F timeline, variance, anchoring) | Done |
+| 25 | Business stage and onboarding (context only, never formulas) | Done |
+| 26 | Template library (SaaS, AI SaaS, Usage, Credits, Marketplace, API) | Done |
+| 27 | HERE model from reusable nodes (credit wallet, revenue recognition, capacity cost, custom metrics) | Done |
+| 28 | Export (JSON, CSV, PDF) and JSON import | Done |
+| 29 | Model versioning (compare, restore, duplicate) | Done |
+| 30 | Performance: measured, then optimized ([docs/performance.md](docs/performance.md)) | Done |
+| 31+ | Security review, … | Not started |
+
+Phases 21–29 are described in [docs/business-context.md](docs/business-context.md).
 
 ## Layout
 
@@ -40,7 +52,8 @@ packages/
   model-schema/       Zod schemas, TS types, node catalog, metrics, validators, example model
   simulation-engine/  time engine, dependency graph, node evaluators, Simulator, sensitivity, scenarios, explanations
   monte-carlo/        seeded sampling, statistics, incremental runs (used by the Web Worker)
-  reports/            report generation and Markdown export
+  reports/            report generation, Markdown/CSV/JSON export and import
+  templates/          template library (SaaS … HERE) built only from generic nodes; auto-layout
   ai/                 LLM provider interface, Ollama, proxy, agent loop, repair loop
 docs/                 architecture and engine docs
 ```
@@ -54,6 +67,7 @@ pnpm build       # production build of apps/web
 pnpm test        # vitest, all packages
 pnpm typecheck   # tsc --noEmit
 pnpm check       # both
+pnpm perf        # engine performance measurements (docs/performance.md)
 ```
 
 ## Quick example

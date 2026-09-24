@@ -14,6 +14,7 @@ import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
+import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -62,6 +63,7 @@ function NodeProperties({ node }: { node: ModelNode }) {
   const validation = useEditor((s) => s.validation);
   const deleteSelection = useEditor((s) => s.deleteSelection);
   const duplicateSelection = useEditor((s) => s.duplicateSelection);
+  const openWhy = useEditor((s) => s.openWhy);
   const spec = NODE_CATALOG[node.type];
   const currency = model.settings.currency as Currency;
   const issues = validation?.issues.filter((i) => i.nodeId === node.id && !i.parameterId) ?? [];
@@ -193,12 +195,17 @@ function NodeProperties({ node }: { node: ModelNode }) {
       <Section title={point ? `Simulated values · ${point.period}` : "Simulated values"}>
         {values ? (
           outputsFor(node).map((o) => (
-            <Stack key={o.name} direction="row" sx={{ justifyContent: "space-between", py: 0.25 }}>
-              <Typography variant="body2" color="text.secondary" title={o.description}>
+            <Stack key={o.name} direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline", py: 0.25, "&:hover .why": { opacity: 1 } }}>
+              <Typography variant="body2" color="text.secondary" title={o.description} sx={{ flex: 1 }}>
                 {o.label}
+                {values[o.name] !== undefined && (
+                  <Link component="button" className="why" variant="caption" underline="hover" sx={{ ml: 0.75, opacity: 0.55 }} onClick={() => openWhy({ nodeId: node.id, port: o.name }, point!.index)} aria-label={`Why is ${node.label} ${o.label} this value?`}>
+                    Why?
+                  </Link>
+                )}
               </Typography>
               <Typography variant="body2" className="num" sx={{ fontWeight: 500 }}>
-                {values[o.name] === undefined ? "—" : formatByUnit(values[o.name], o.name === "utilization" ? "percent" : node.unit, currency)}
+                {values[o.name] === undefined ? "—" : formatByUnit(values[o.name], RATIO_PORTS.has(o.name) ? "percent" : node.type === "CREDIT_WALLET" ? "credits" : o.name === "units" ? "units" : node.unit, currency)}
               </Typography>
             </Stack>
           ))
@@ -212,8 +219,10 @@ function NodeProperties({ node }: { node: ModelNode }) {
   );
 }
 
+const RATIO_PORTS = new Set(["utilization", "burnDepth", "rationingRate", "breakageRate"]);
+
 function hasConfig(node: ModelNode): boolean {
-  return ["GROWTH", "CHURN", "REVENUE", "COST", "SPLIT", "CONDITION", "FORMULA"].includes(node.type);
+  return ["GROWTH", "CHURN", "REVENUE", "COST", "SPLIT", "CONDITION", "FORMULA", "REVENUE_RECOGNITION"].includes(node.type);
 }
 
 function MultiSelection({ count }: { count: number }) {

@@ -30,6 +30,8 @@ export const NODE_TYPES = [
   "CAPACITY",
   "CONDITION",
   "FORMULA",
+  "CREDIT_WALLET",
+  "REVENUE_RECOGNITION",
 ] as const;
 export const NodeTypeSchema = z.enum(NODE_TYPES);
 
@@ -113,7 +115,7 @@ const periodIndex = z.number().int().min(1);
 
 export const GROWTH_TYPES = ["compound", "linear", "absolute"] as const;
 export const REVENUE_TYPES = ["subscription", "usage", "topup", "other"] as const;
-export const COST_TYPES = ["fixed", "variable", "percentage", "step"] as const;
+export const COST_TYPES = ["fixed", "variable", "percentage", "step", "capacity"] as const;
 export const COST_CLASSES = ["cogs", "opex"] as const;
 export const COST_CATEGORIES = ["payroll", "marketing", "infrastructure", "ai", "payment", "rent", "software", "other"] as const;
 export const COMPARISON_OPERATORS = [">", ">=", "<", "<=", "==", "!="] as const;
@@ -202,6 +204,12 @@ export const NodeSchema = z.discriminatedUnion("type", [
     type: z.literal("FORMULA"),
     config: z.object({ expression: z.string().min(1, "Formula expression is required").max(2000) }),
   }),
+  z.object({ ...baseNode, type: z.literal("CREDIT_WALLET"), config: emptyConfig }),
+  z.object({
+    ...baseNode,
+    type: z.literal("REVENUE_RECOGNITION"),
+    config: z.object({ revenueType: z.enum(REVENUE_TYPES).default("topup") }).default({ revenueType: "topup" }),
+  }),
 ]);
 
 // ─── Connections ───────────────────────────────────────────────────────────
@@ -245,6 +253,67 @@ export const GuardrailSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
+// ─── Custom metrics ────────────────────────────────────────────────────────
+
+export const METRIC_UNITS = ["currency", "percent", "count", "months", "number"] as const;
+
+/** A formula variable of a custom metric reads a built-in/custom metric or a node output. */
+export const MetricInputSchema = z.union([
+  z.object({ metric: z.string().min(1).max(64) }),
+  z.object({ nodeId: IdSchema, port: z.string().min(1).default("out") }),
+]);
+
+export const CustomMetricSchema = z.object({
+  key: z.string().regex(/^[a-z][A-Za-z0-9_]{0,39}$/, "Metric key must start with a lowercase letter and use letters, digits or '_'"),
+  label: z.string().min(1).max(80),
+  description: z.string().max(1000).default(""),
+  unit: z.enum(METRIC_UNITS).default("number"),
+  /** Formula over the named inputs, e.g. "accounts / guardians". */
+  expression: z.string().min(1).max(500),
+  inputs: z.record(z.string(), MetricInputSchema).default({}),
+  higherIsBetter: z.boolean().optional(),
+  /** "needs_confirmation": the definition is a placeholder the user has not confirmed. */
+  status: z.enum(["confirmed", "needs_confirmation"]).default("confirmed"),
+});
+
+// ─── Current state & actuals ───────────────────────────────────────────────
+
+const monthString = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Month must be YYYY-MM");
+const optionalNumber = finiteNumber.optional();
+
+/** "Where am I now?" — the business today, entered by the user or imported. Never produced by the simulation. */
+export const CurrentStateSchema = z.object({
+  asOf: monthString,
+  mrr: optionalNumber,
+  customers: optionalNumber,
+  cash: optionalNumber,
+  /** Monthly growth rate as a fraction. */
+  growth: optionalNumber,
+  /** Monthly churn rate as a fraction. */
+  churn: optionalNumber,
+  /** Total monthly costs. */
+  monthlyExpenses: optionalNumber,
+  grossMargin: optionalNumber,
+  source: z.enum(["user", "imported"]).default("user"),
+  notes: z.string().max(2000).optional(),
+});
+
+export const ACTUAL_FIELDS = ["revenue", "mrr", "customers", "newCustomers", "churnedCustomers", "cogs", "opex", "cash"] as const;
+
+export const ActualPointSchema = z.object({
+  period: monthString,
+  values: z.object({
+    revenue: optionalNumber,
+    mrr: optionalNumber,
+    customers: optionalNumber,
+    newCustomers: optionalNumber,
+    churnedCustomers: optionalNumber,
+    cogs: optionalNumber,
+    opex: optionalNumber,
+    cash: optionalNumber,
+  }),
+});
+
 // ─── Settings & model ──────────────────────────────────────────────────────
 
 export const SimulationSettingsSchema = z.object({
@@ -261,6 +330,10 @@ export const SimulationSettingsSchema = z.object({
 
 export const ModelMetadataSchema = z.object({
   stage: BusinessStageSchema.optional(),
+  /** Onboarding answers: what is being built, how it makes money, the founder's biggest questions. */
+  businessType: z.string().max(60).optional(),
+  revenueModel: z.string().max(60).optional(),
+  goals: z.array(z.string().max(80)).max(10).optional(),
   templateId: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -279,6 +352,10 @@ export const ModelSchema = z.object({
   parameters: z.array(ParameterSchema).max(5000).default([]),
   scenarios: z.array(ScenarioSchema).max(200).default([]),
   guardrails: z.array(GuardrailSchema).max(200).default([]),
+  customMetrics: z.array(CustomMetricSchema).max(50).default([]),
+  currentState: CurrentStateSchema.optional(),
+  /** Historical actuals, one entry per month. */
+  actuals: z.array(ActualPointSchema).max(600).default([]),
   metadata: ModelMetadataSchema.default({}),
 });
 
@@ -383,7 +460,7 @@ export const SimulationResultSchema = z.object({
 export const MetricDefinitionSchema = z.object({
   key: z.string(),
   label: z.string(),
-  unit: z.enum(["currency", "percent", "count", "months", "number"]),
+  unit: z.enum(METRIC_UNITS),
   description: z.string(),
   higherIsBetter: z.boolean().optional(),
 });
@@ -430,4 +507,19 @@ export const TemplateSchema = z.object({
   version: z.string().default("1.0"),
   stages: z.array(BusinessStageSchema).optional(),
   model: ModelSchema,
+});
+
+// ─── Versions ──────────────────────────────────────────────────────────────
+
+/** An immutable snapshot of a model: graph, parameters, scenarios, settings and seed. */
+export const ModelVersionSchema = z.object({
+  id: IdSchema,
+  modelId: IdSchema,
+  version: z.number().int().min(1),
+  createdAt: z.string(),
+  kind: z.enum(["manual", "auto", "restore", "import"]).default("manual"),
+  label: z.string().max(120).optional(),
+  snapshot: ModelSchema,
+  /** Key results of the snapshot's base simulation, when it could run. */
+  summary: SimulationSummarySchema.nullable().default(null),
 });

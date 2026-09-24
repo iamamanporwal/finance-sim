@@ -29,7 +29,7 @@ const STATUS = {
 } as const;
 
 /** M1 … Mn strip. Every simulated period is clickable and inspectable. */
-export function Timeline({ result, selected, onSelect }: { result: SimulationResult; selected: number; onSelect(period: number): void }) {
+export function Timeline({ result, selected, onSelect, actualPeriods = [] }: { result: SimulationResult; selected: number; onSelect(period: number): void; actualPeriods?: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const prefix = { daily: "D", weekly: "W", monthly: "M", quarterly: "Q", yearly: "Y" }[result.settings.timeStep];
 
@@ -49,6 +49,15 @@ export function Timeline({ result, selected, onSelect }: { result: SimulationRes
       }}
       sx={{ display: "flex", gap: 0.5, overflowX: "auto", pb: 0.5, outline: "none" }}
     >
+      {actualPeriods.map((period) => (
+        <Tooltip key={period} title={`${period}: actual data (see Actuals vs forecast)`}>
+          <Box aria-label={`${period} actual`} sx={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 52, py: 0.75, borderRadius: 1.5, border: 1, borderStyle: "dashed", borderColor: tokens.info, color: tokens.info }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 600 }}>{period.slice(2)}</Typography>
+            <Typography sx={{ fontSize: 11, fontWeight: 700 }}>A</Typography>
+          </Box>
+        </Tooltip>
+      ))}
+      {actualPeriods.length > 0 && <Box aria-hidden sx={{ width: 2, flexShrink: 0, bgcolor: "text.disabled", mx: 0.75, borderRadius: 1 }} />}
       {result.timeline.map((p) => {
         const events = result.events.filter((e) => e.period === p.index);
         const status = periodStatus(events);

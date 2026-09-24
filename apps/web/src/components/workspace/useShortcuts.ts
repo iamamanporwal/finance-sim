@@ -28,8 +28,8 @@ export function useShortcuts() {
       }
       if (mod && key === "s") {
         e.preventDefault();
-        s.save();
-        s.notify("Saved in this browser.", "success");
+        // save() reports the version it created (or that nothing changed).
+        s.save({ version: "manual" });
         return;
       }
       if (mod && key === "enter") {

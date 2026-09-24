@@ -5,12 +5,12 @@
  * reports comes from the simulation engine.
  */
 import type { AgentTool } from "@fin/ai";
-import { METRIC_DEFINITIONS, NODE_CATALOG, outputsFor, slotsFor, type Model, type SimulationResult } from "@fin/model-schema";
+import { COST_CATEGORIES, METRIC_DEFINITIONS, NODE_CATALOG, outputsFor, slotsFor, type Model, type Parameter, type SimulationResult } from "@fin/model-schema";
 import type { MonteCarloOptions, MonteCarloResult } from "@fin/monte-carlo";
 import {
   compareScenarios,
   explainGuardrail,
-  explainMetric,
+  explainWhy,
   resolveParameterValues,
   runSensitivity,
   simulate,
@@ -19,22 +19,40 @@ import {
   type ScenarioComparisonRow,
 } from "@fin/simulation-engine";
 import { z } from "zod";
-import { formatMetric, type Currency } from "@/lib/format";
+import { formatKind, formatMetric, type Currency } from "@/lib/format";
 import * as ops from "@/lib/model-ops";
 import { NODE_PRESETS, findPreset } from "@/lib/presets";
-import { addScenario, setOverride } from "@/lib/scenario-ops";
+import { addScenario, createStandardScenarios, setOverride } from "@/lib/scenario-ops";
+import { applyDefaultUncertainty } from "@/lib/uncertainty";
+import { whyFactsText } from "./why";
 
 export interface ToolContext {
   getModel(): Model;
   /** Applies an edited model through the editor (validated, undoable). */
   commit(next: Model, summary: string): void;
-  runMonteCarlo(options: MonteCarloOptions): Promise<MonteCarloResult | null>;
+  /** scenarioId null = base model. */
+  runMonteCarlo(options: MonteCarloOptions, scenarioId: string | null): Promise<MonteCarloResult | null>;
 }
 
 const METRIC_KEYS = METRIC_DEFINITIONS.map((m) => m.key) as [string, ...string[]];
 const PRESET_IDS = NODE_PRESETS.map((p) => p.id) as [string, ...string[]];
 const metric = z.enum(METRIC_KEYS).describe(`Metric key: ${METRIC_KEYS.join(", ")}`);
 const scenarioArg = z.string().optional().describe("Scenario ID or name. Omit for the base model.");
+const CATEGORY_WORDS: Record<string, (typeof COST_CATEGORIES)[number]> = {
+  ai: "ai", aicosts: "ai", aicost: "ai", tokens: "ai", inference: "ai", llm: "ai",
+  payroll: "payroll", salaries: "payroll", salary: "payroll", hiring: "payroll", staff: "payroll", headcount: "payroll", team: "payroll",
+  marketing: "marketing", ads: "marketing", advertising: "marketing", acquisition: "marketing",
+  infrastructure: "infrastructure", hosting: "infrastructure", servers: "infrastructure", cloud: "infrastructure", storage: "infrastructure",
+  payment: "payment", paymentfees: "payment", fees: "payment",
+  rent: "rent", office: "rent", software: "software", tools: "software", other: "other",
+};
+const changeArg = z.object({
+  target: z.string().describe(`Assumption ID or name, or a cost category (${COST_CATEGORIES.join(", ")}) to change every cost in it`),
+  change_percent: z.number().optional().describe("Relative change: 0.5 = +50%, -0.2 = −20%, 1 = doubles"),
+  value: z.number().optional().describe("New absolute value; percentages as fractions"),
+  add: z.number().optional().describe("Amount to add per period, e.g. 20000 for +$20K/month (e.g. new hires)"),
+});
+type Change = z.output<typeof changeArg>;
 
 class ToolError extends Error {}
 
@@ -42,7 +60,9 @@ class ToolError extends Error {}
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
-  const model = () => ctx.getModel();
+  // compare_options plans several scenarios before committing; while it does, "the model" is its work in progress.
+  let ctxModel: Model | null = null;
+  const model = () => ctxModel ?? ctx.getModel();
   const currency = () => model().settings.currency as Currency;
   const fmt = (key: string, v: number | null | undefined) => formatMetric(key, v ?? null, currency());
   const node = (id: string) => {
@@ -99,6 +119,111 @@ export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
       cash_out: r.summary.cashOutPeriod ? r.timeline[r.summary.cashOutPeriod - 1]!.period : "never",
       guardrails_broken: r.guardrails.filter((g) => !g.passed).map((g) => model().guardrails.find((x) => x.id === g.guardrailId)?.label),
     };
+  };
+
+  /** Engine-computed comparison of the base model with scenarios; differences are never left to the AI. */
+  const compareRows = (ids: string[]) => {
+    const v = validateForSimulation(model());
+    if (!v.valid) throw new ToolError(`Simulation blocked: ${v.issues.filter((i) => i.severity === "error").map((i) => i.message).join(" ")}`);
+    const rows = compareScenarios(model(), [null, ...ids]);
+    const base = rows[0]!;
+    const pick = (r: ScenarioComparisonRow) => ({
+      mrr: r.summary?.mrr ?? null,
+      arr: r.summary?.arr ?? null,
+      customers: r.summary?.customers ?? null,
+      grossMargin: r.summary?.grossMargin ?? null,
+      cash: r.summary?.cash ?? null,
+      runwayMonths: r.minRunwayMonths ?? null,
+    });
+    const b = pick(base);
+    return rows.map((r) => {
+      if (r.error) return { scenario: r.name, error: r.error };
+      const cur = pick(r);
+      const metrics = Object.fromEntries(
+        (Object.keys(cur) as (keyof typeof cur)[]).map((k) => {
+          const value = cur[k];
+          const baseValue = b[k];
+          const diff = value !== null && baseValue !== null ? value - baseValue : null;
+          const pct = diff !== null && baseValue ? diff / Math.abs(baseValue) : null;
+          return [k, { value: fmt(k, value), ...(r.scenarioId ? { vs_base: diff === null ? "n/a" : `${diff >= 0 ? "+" : "−"}${fmt(k, Math.abs(diff))}${pct === null ? "" : ` (${pct >= 0 ? "+" : "−"}${Math.abs(pct * 100).toFixed(1)}%)`}` } : {}) }];
+        }),
+      );
+      return {
+        scenario: r.name,
+        final_period: r.result?.timeline[r.result.timeline.length - 1]?.period,
+        break_even: r.summary?.breakEvenPeriod ? r.result!.timeline[r.summary.breakEvenPeriod - 1]!.period : "not reached",
+        cash_runs_out: r.summary?.cashOutPeriod ? r.result!.timeline[r.summary.cashOutPeriod - 1]!.period : "never",
+        ...metrics,
+      };
+    });
+  };
+
+  /** Parameters a change target refers to: one assumption, or every cost assumption in a category. */
+  const resolveTarget = (target: string, m: Model): { params: Parameter[]; category?: (typeof COST_CATEGORIES)[number] } => {
+    const direct = m.parameters.find((x) => x.id === target) ?? m.parameters.find((x) => slug(x.name) === slug(target));
+    if (direct) return { params: [direct] };
+    const word = slug(target.replace(/^category:/i, "").replace(/costs?$/i, ""));
+    const category = CATEGORY_WORDS[word] ?? CATEGORY_WORDS[slug(target)];
+    if (!category) {
+      const partial = m.parameters.filter((x) => slug(x.name).includes(slug(target)));
+      if (partial.length === 1) return { params: partial };
+      throw new ToolError(`No assumption or cost category "${target}". Assumptions: ${m.parameters.map((x) => x.name).join(", ")}. Categories: ${COST_CATEGORIES.join(", ")}.`);
+    }
+    const ids = new Set<string>();
+    for (const n of m.nodes) {
+      if (n.type === "COST" && n.config.category === category) {
+        const slot = { fixed: "amount", variable: "unitCost", percentage: "rate", step: undefined, capacity: "unitCost" }[n.config.costType];
+        if (slot && n.parameters[slot]) ids.add(n.parameters[slot]!);
+      }
+      if (n.type === "ACQUISITION" && category === "marketing" && n.parameters.budget) ids.add(n.parameters.budget);
+    }
+    return { params: m.parameters.filter((x) => ids.has(x.id)), category };
+  };
+
+  /**
+   * Turns requested changes into scenario overrides. Adding spend to a category with
+   * no cost line (e.g. hiring when there is no payroll) adds a $0 line to the base
+   * model first, so the base results do not change.
+   */
+  const planChanges = (changes: Change[], parent: string | undefined) => {
+    let m = model();
+    const notes: string[] = [];
+    const overrides: { parameterId: string; value: number; name: string; from: number }[] = [];
+    for (const c of changes) {
+      const given = [c.change_percent, c.value, c.add].filter((x) => x !== undefined).length;
+      if (given !== 1) throw new ToolError(`Change "${c.target}" needs exactly one of change_percent, value or add.`);
+      let { params, category } = resolveTarget(c.target, m);
+      if (params.length === 0 && category) {
+        if (category === "marketing") throw new ToolError("The model has no marketing/acquisition node, so extra marketing spend cannot bring customers. Ask the user for the cost to acquire a customer (CAC), then add an acquisition node.");
+        if (c.add === undefined) throw new ToolError(`The model has no ${category} costs to change. Use "add" to add a new ${category} cost line.`);
+        const preset = findPreset("fixed-cost")!;
+        const label = { payroll: "Payroll", rent: "Rent", software: "Software", ai: "AI costs", infrastructure: "Hosting", payment: "Payment fees", other: "Other costs" }[category];
+        const r = ops.addNode(m, { ...preset, label, params: [{ ...preset.params[0]!, value: 0 }] }, { x: Math.max(0, ...m.nodes.map((n) => n.position.x)) + 280, y: 400 });
+        m = ops.updateNode(r.model, r.nodeId, { config: { costType: "fixed", costClass: "opex", category } });
+        const cash = m.nodes.find((n) => n.type === "CASH");
+        if (cash) m = ops.connect(m, { source: r.nodeId, sourcePort: "out", target: cash.id, targetPort: "outflow" });
+        const pid = m.nodes.find((n) => n.id === r.nodeId)!.parameters.amount!;
+        m = ops.updateParameter(m, pid, { source: "ai", status: "accepted", description: "Added by the AI copilot at $0 so scenarios can change it; the base model is unchanged." });
+        notes.push(`Added a "${label}" cost line at $0 to the base model${cash ? " (connected to Cash)" : ""} so the scenario can add spend.`);
+        params = [m.parameters.find((x) => x.id === pid)!];
+      }
+      if (params.length === 0) throw new ToolError(`Nothing to change for "${c.target}".`);
+      if (params.length > 1 && c.add !== undefined) throw new ToolError(`"${c.target}" covers ${params.length} assumptions (${params.map((p) => p.name).join(", ")}); use change_percent, or name one assumption.`);
+      const current = resolveParameterValues(m, parent);
+      for (const p of params) {
+        const from = current.get(p.id)!.toNumber();
+        const to = c.value ?? (c.add !== undefined ? from + c.add : Number((from * (1 + c.change_percent!)).toPrecision(12)));
+        overrides.push({ parameterId: p.id, value: to, name: p.name, from });
+      }
+    }
+    return { model: m, overrides, notes };
+  };
+
+  const createScenarioFrom = (m: Model, name: string, kind: "upside" | "downside" | "custom", parent: string | undefined, overrides: { parameterId: string; value: number }[], description: string) => {
+    const { model: next, id } = addScenario(m, { name, kind, parentId: parent, overrides: overrides.map(({ parameterId, value }) => ({ parameterId, value })), description });
+    const problems = validateParsedForSimulation(next).filter((i) => i.severity === "error" && (i.scenarioId === id || !i.scenarioId));
+    if (problems.length) throw new ToolError(problems.map((i) => i.message).join(" "));
+    return { next, id };
   };
 
   const tools = [
@@ -319,55 +444,81 @@ export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
       name: "compare_scenarios",
       description: "Compare the base model with one or more scenarios at the end of the forecast. Returns each metric plus the engine-computed difference from the base model. Use this instead of calculating differences yourself.",
       parameters: z.object({ scenarios: z.array(z.string()).min(1).max(6).describe("Scenario IDs or names") }),
-      run: ({ scenarios }) => {
-        const ids = scenarios.map((s) => scenarioId(s)).filter((s): s is string => !!s);
-        const v = validateForSimulation(model());
-        if (!v.valid) throw new ToolError(`Simulation blocked: ${v.issues.filter((i) => i.severity === "error").map((i) => i.message).join(" ")}`);
-        const rows = compareScenarios(model(), [null, ...ids]);
-        const base = rows[0]!;
-        const pick = (r: ScenarioComparisonRow) => ({
-          mrr: r.summary?.mrr ?? null,
-          arr: r.summary?.arr ?? null,
-          customers: r.summary?.customers ?? null,
-          grossMargin: r.summary?.grossMargin ?? null,
-          cash: r.summary?.cash ?? null,
-          runwayMonths: r.minRunwayMonths ?? null,
-        });
-        const b = pick(base);
-        return rows.map((r) => {
-          if (r.error) return { scenario: r.name, error: r.error };
-          const cur = pick(r);
-          const metrics = Object.fromEntries(
-            (Object.keys(cur) as (keyof typeof cur)[]).map((k) => {
-              const value = cur[k];
-              const baseValue = b[k];
-              const diff = value !== null && baseValue !== null ? value - baseValue : null;
-              const pct = diff !== null && baseValue ? diff / Math.abs(baseValue) : null;
-              return [k, { value: fmt(k, value), ...(r.scenarioId ? { vs_base: diff === null ? "n/a" : `${diff >= 0 ? "+" : "−"}${fmt(k === "grossMargin" ? "grossMargin" : k, Math.abs(diff))}${pct === null ? "" : ` (${pct >= 0 ? "+" : "−"}${Math.abs(pct * 100).toFixed(1)}%)`}` } : {}) }];
-            }),
-          );
-          return {
-            scenario: r.name,
-            final_period: r.result?.timeline[r.result.timeline.length - 1]?.period,
-            break_even: r.summary?.breakEvenPeriod ? r.result!.timeline[r.summary.breakEvenPeriod - 1]!.period : "not reached",
-            ...metrics,
-          };
-        });
+      run: ({ scenarios }) => compareRows(scenarios.map((x) => scenarioId(x)).filter((x): x is string => !!x)),
+    }),
+    tool({
+      name: "what_if",
+      description:
+        "Answer a what-if question in one step: creates a scenario with the changes (base model untouched), runs it and compares it with the base model. Examples: price +20% → {target:'Price', change_percent:0.2}; churn doubles → {target:'Monthly churn', change_percent:1}; AI costs +50% → {target:'ai', change_percent:0.5}; hire 2 people → {target:'payroll', add:16000}.",
+      parameters: z.object({ name: z.string().min(1).max(80).describe("Short scenario name, e.g. 'Churn doubles'"), changes: z.array(changeArg).min(1).max(20), based_on: scenarioArg }),
+      run: ({ name, changes, based_on }) => {
+        const parent = scenarioId(based_on);
+        const plan = planChanges(changes, parent);
+        const { next, id } = createScenarioFrom(plan.model, name, "custom", parent, plan.overrides, "Created by the AI copilot (what-if).");
+        const commitInfo = commit(next, `AI created scenario ${name}`);
+        return { scenario_id: id, name, changes: plan.overrides.map((o) => ({ assumption: o.name, from: o.from, to: o.value })), notes: plan.notes, comparison: compareRows([id]), ...commitInfo };
+      },
+    }),
+    tool({
+      name: "compare_options",
+      description: "Compare 2–4 alternative plans side by side (e.g. hiring vs marketing). Each option becomes a scenario; returns engine-computed results and differences from the base model.",
+      parameters: z.object({ options: z.array(z.object({ name: z.string().min(1).max(80), changes: z.array(changeArg).min(1).max(20) })).min(2).max(4) }),
+      run: ({ options }) => {
+        let m = model();
+        const created: { id: string; name: string; changes: { assumption: string; from: number; to: number }[] }[] = [];
+        const notes: string[] = [];
+        try {
+          for (const o of options) {
+            // Plan against the model that already contains earlier options' scenarios and $0 lines.
+            ctxModel = m;
+            const plan = planChanges(o.changes, undefined);
+            notes.push(...plan.notes);
+            const { next, id } = createScenarioFrom(plan.model, o.name, "custom", undefined, plan.overrides, "Created by the AI copilot (option comparison).");
+            m = next;
+            created.push({ id, name: o.name, changes: plan.overrides.map((x) => ({ assumption: x.name, from: x.from, to: x.value })) });
+          }
+        } finally {
+          ctxModel = null;
+        }
+        const commitInfo = commit(m, `AI compared ${options.map((o) => o.name).join(" vs ")}`);
+        return { options: created, notes, comparison: compareRows(created.map((c) => c.id)), ...commitInfo };
+      },
+    }),
+    tool({
+      name: "create_standard_scenarios",
+      description: "Create Base, Upside and Downside scenarios (each impactful assumption moved ±magnitude in its favorable/unfavorable direction, measured by sensitivity analysis) and compare them.",
+      parameters: z.object({ magnitude: z.number().min(0.05).max(0.5).default(0.2).describe("0.2 = ±20%") }),
+      run: ({ magnitude }) => {
+        const next = createStandardScenarios(model(), magnitude);
+        const added = next.scenarios.filter((x) => !model().scenarios.some((y) => y.id === x.id)).map((x) => x.name);
+        const commitInfo = added.length ? commit(next, `AI created ${added.join(", ")} scenarios`) : {};
+        const ids = next.scenarios.filter((x) => x.kind === "upside" || x.kind === "downside").map((x) => x.id);
+        return { created: added, already_existed: added.length ? undefined : "Upside and Downside already exist", comparison: compareRows(ids), ...commitInfo };
       },
     }),
     tool({
       name: "run_monte_carlo",
-      description: "Run a Monte Carlo simulation over the uncertain assumptions. Returns P10/P50/P90 and probabilities.",
+      description: "Run a Monte Carlo simulation (100–10,000 runs) over the uncertain assumptions, for the base model or a scenario. Returns P10/P50/P90 and probabilities. If no assumption has an uncertainty range, medium (±25%) ranges are added first (undoable) and this is reported.",
       parameters: z.object({ runs: z.number().int().min(100).max(10000).default(1000), scenario: scenarioArg }),
       run: async ({ runs, scenario }) => {
-        const uncertain = model().parameters.filter((p) => p.distribution && p.distribution.type !== "fixed");
-        if (uncertain.length === 0) throw new ToolError("No assumption has an uncertainty range, so every run would be identical. Ask the user to set uncertainty (or use the Risk tab's ±25% button) first.");
-        if (scenarioId(scenario)) throw new ToolError("Monte Carlo runs on the active scenario in the UI; switch scenarios there, or omit scenario for the base model.");
-        const r = await ctx.runMonteCarlo({ runs, seed: model().settings.seed });
+        const sid = scenarioId(scenario) ?? null;
+        let note: string | undefined;
+        if (!model().parameters.some((p) => p.distribution && p.distribution.type !== "fixed")) {
+          const next = applyDefaultUncertainty(model());
+          const count = next.parameters.filter((p, i) => p.distribution !== model().parameters[i]!.distribution).length;
+          if (count === 0) throw new ToolError("No assumption can be given an uncertainty range, so every run would be identical.");
+          commit(next, "AI added ±25% uncertainty ranges");
+          note = `No assumption had an uncertainty range, so medium (±25%) ranges were added to ${count} assumptions (prices, rates and per-unit costs; starting balances stay fixed). The user can change or undo this.`;
+        }
+        const r = await ctx.runMonteCarlo({ runs, seed: model().settings.seed }, sid);
         if (!r || !r.metrics.mrr) throw new ToolError("Monte Carlo was cancelled or produced no runs.");
-        const m = (s: { p10: number; p50: number; p90: number } | null, key: string) => (s ? { p10: fmt(key, s.p10), p50: fmt(key, s.p50), p90: fmt(key, s.p90) } : null);
+        const m = (st: { p10: number; p50: number; p90: number } | null, key: string) => (st ? { p10: fmt(key, st.p10), p50: fmt(key, st.p50), p90: fmt(key, st.p90) } : null);
         return {
           runs: r.completed,
+          failed_runs: r.failed,
+          scenario: sid ? model().scenarios.find((x) => x.id === sid)?.name : "Base model",
+          seed: r.seed,
+          uncertainty_note: note,
           uncertain_assumptions: r.uncertainParameters.map((p) => p.name),
           final_mrr: m(r.metrics.mrr, "mrr"),
           final_cash: m(r.metrics.cash, "cash"),
@@ -417,18 +568,13 @@ export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
     }),
     tool({
       name: "explain_metric",
-      description: "Why a metric has its value: its formula, the nodes that make it up and the upstream causal chain, with engine values.",
-      parameters: z.object({ metric, period: z.number().int().min(1).optional(), scenario: scenarioArg }),
-      run: ({ metric: key, period, scenario }) => {
-        const e = explainMetric(model(), run(scenario), key, period);
-        return {
-          metric: key,
-          period: e.periodLabel,
-          value: fmt(key, e.value),
-          formula: e.formula,
-          components: e.components.map((c) => ({ node: c.label, value: c.value })),
-          causal_chain: e.drivers.map((d) => ({ node: d.label, value: d.value, steps_away: d.depth })),
-        };
+      description: "Why a metric (or a node's value) is what it is: the causal chain down to the assumptions, with the formula and engine values at every step. Quote these values; do not compute new ones.",
+      parameters: z.object({ metric: metric.optional(), node_id: z.string().optional().describe("Explain a node instead of a metric"), period: z.number().int().min(1).optional(), scenario: scenarioArg }),
+      run: ({ metric: key, node_id, period, scenario }) => {
+        if (!key && !node_id) throw new ToolError("Give metric or node_id.");
+        const r = run(scenario);
+        const e = explainWhy(model(), r, key ? { metric: key } : { nodeId: node(node_id!).id }, { period, maxDepth: 5, format: (v, k) => formatKind(v, k, currency()) });
+        return { chain: e.chain.join(" ← "), explanation: whyFactsText(e, (v, k) => formatKind(v, k, currency()), 40) };
       },
     }),
     tool({

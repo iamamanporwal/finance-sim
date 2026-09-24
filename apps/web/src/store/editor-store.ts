@@ -1,17 +1,19 @@
 "use client";
 
-import type { Model, ModelValidationResult, Parameter, SimulationResult } from "@fin/model-schema";
+import type { Model, ModelValidationResult, ModelVersion, Parameter, SimulationResult } from "@fin/model-schema";
 import type { MonteCarloOptions, MonteCarloResult } from "@fin/monte-carlo";
-import { runSensitivity, SimulationBlockedError, SimulationError, simulate, validateForSimulation, type SensitivityOptions, type SensitivityResult } from "@fin/simulation-engine";
+import { runSensitivity, SimulationBlockedError, SimulationError, simulate, validateForSimulation, type SensitivityOptions, type SensitivityResult, type WhyTarget } from "@fin/simulation-engine";
 import { create } from "zustand";
 import * as ops from "@/lib/model-ops";
 import { startMonteCarlo, type MonteCarloJob } from "@/lib/monte-carlo-client";
 import { clearOverride, effectiveValue, setOverride } from "@/lib/scenario-ops";
 import { findPreset } from "@/lib/presets";
-import { saveModel } from "@/lib/storage";
+import { browserVersionStore, saveModel } from "@/lib/storage";
+import { createVersion, restoreSnapshot } from "@/lib/versions";
 
 export type Mode = "build" | "simulate" | "results" | "report";
 export type ResultsTab = "overview" | "scenarios" | "risk" | "sensitivity" | "guardrails";
+export type BusinessTab = "profile" | "current" | "actuals" | "metrics";
 
 export interface MonteCarloState {
   status: "idle" | "running" | "done" | "error";
@@ -61,6 +63,9 @@ interface EditorState {
   selectedPeriod: number | null;
 
   saveState: { dirty: boolean; savedAt: string | null; error: string | null };
+  /** Open "Why?" explanation (metric or node), for a period (default: selected or last). */
+  why: (WhyTarget & { period?: number }) | null;
+  businessTab: BusinessTab | null;
   notice: { message: string; severity: "info" | "success" | "warning" | "error" } | null;
 
   load(model: Model): void;
@@ -70,7 +75,11 @@ interface EditorState {
   undo(): void;
   redo(): void;
   run(): void;
-  save(): void;
+  /** Writes the working copy. "manual" (⌘S) and "restore" always record a version; autosave records one at most every 10 minutes. */
+  save(opts?: { version?: "manual" | "auto" | "restore"; label?: string }): void;
+  restoreVersion(version: ModelVersion): void;
+  panel: "export" | "versions" | null;
+  setPanel(panel: "export" | "versions" | null): void;
 
   addPreset(presetId: string, position: ops.XY): void;
   connect(req: ops.ConnectRequest): void;
@@ -83,7 +92,8 @@ interface EditorState {
 
   resetOverride(parameterId: string): void;
   setActiveScenario(id: string | null): void;
-  runMonteCarlo(options: MonteCarloOptions): Promise<MonteCarloResult | null>;
+  /** scenarioId: undefined = the active scenario, null = base model. */
+  runMonteCarlo(options: MonteCarloOptions, scenarioId?: string | null): Promise<MonteCarloResult | null>;
   cancelMonteCarlo(): void;
   runSensitivity(options: SensitivityOptions): SensitivityResult | null;
 
@@ -94,6 +104,10 @@ interface EditorState {
   setSelectedPeriod(period: number | null): void;
   notify(message: string, severity?: "info" | "success" | "warning" | "error"): void;
   clearNotice(): void;
+  openWhy(target: WhyTarget, period?: number): void;
+  closeWhy(): void;
+  openBusiness(tab?: BusinessTab): void;
+  closeBusiness(): void;
 }
 
 const HISTORY_LIMIT = 100;
@@ -134,6 +148,8 @@ export const useEditor = create<EditorState>((set, get) => {
     change: null,
     selectedPeriod: null,
     saveState: { dirty: false, savedAt: null, error: null },
+    why: null,
+    businessTab: null,
     notice: null,
 
     load(model) {
@@ -233,13 +249,42 @@ export const useEditor = create<EditorState>((set, get) => {
       }
     },
 
-    save() {
+    save(opts = {}) {
       clearTimeout(saveTimer);
-      const { model } = get();
+      let { model } = get();
       if (!model) return;
+      const kind = opts.version ?? "auto";
+      // Summary of the base run, so the version list shows results without re-running.
+      let summary = null;
+      try {
+        const { result, stale, activeScenarioId } = get();
+        summary = result && !stale && !activeScenarioId ? result.summary : validateForSimulation(model).valid ? simulate(model).summary : null;
+      } catch {
+        summary = null;
+      }
+      const v = createVersion(browserVersionStore, model, { kind, label: opts.label, summary });
+      if (v.status === "created") {
+        model = v.model;
+        set({ model });
+      }
       const { ok, savedAt } = saveModel(model);
       set({ saveState: ok ? { dirty: false, savedAt, error: null } : { ...get().saveState, error: "Could not save — browser storage is unavailable or full." } });
+      if (kind !== "auto") {
+        if (v.status === "created") get().notify(`Saved version v${v.version.version}${v.version.label ? ` “${v.version.label}”` : ""}.`, "success");
+        else if (v.status === "unchanged") get().notify(`No changes since v${v.version.version}.`, "info");
+        else if (v.status === "failed") get().notify("Saved, but the version history is full in this browser.", "warning");
+      }
     },
+
+    restoreVersion(version) {
+      const { model } = get();
+      if (!model) return;
+      get().apply(() => restoreSnapshot(model, version));
+      get().save({ version: "restore", label: `Restored v${version.version}` });
+    },
+
+    panel: null,
+    setPanel: (panel) => set({ panel }),
 
     addPreset(presetId, position) {
       const preset = findPreset(presetId);
@@ -337,11 +382,11 @@ export const useEditor = create<EditorState>((set, get) => {
       get().run();
     },
 
-    async runMonteCarlo(options) {
+    async runMonteCarlo(options, requestedScenario) {
       const { model, activeScenarioId } = get();
       if (!model) return null;
       mcJob?.cancel();
-      const scenarioId = activeScenarioId;
+      const scenarioId = requestedScenario === undefined ? activeScenarioId : requestedScenario;
       set({ monteCarlo: { status: "running", done: 0, total: options.runs, result: get().monteCarlo.result, error: null, model, scenarioId } });
       const job = startMonteCarlo(model, { ...options, scenarioId: scenarioId ?? undefined }, (done, total) =>
         set((s) => ({ monteCarlo: { ...s.monteCarlo, done, total } })),
@@ -392,6 +437,10 @@ export const useEditor = create<EditorState>((set, get) => {
     setSelectedPeriod: (selectedPeriod) => set({ selectedPeriod }),
     notify: (message, severity = "info") => set({ notice: { message, severity } }),
     clearNotice: () => set({ notice: null }),
+    openWhy: (target, period) => set({ why: { ...target, period: period ?? get().selectedPeriod ?? undefined } }),
+    closeWhy: () => set({ why: null }),
+    openBusiness: (tab = "profile") => set({ businessTab: tab }),
+    closeBusiness: () => set({ businessTab: null }),
   };
 });
 

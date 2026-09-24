@@ -4,3 +4,4 @@ export * from "./proxy";
 export * from "./repair";
 export * from "./testing";
 export * from "./types";
+export * from "./grounding";

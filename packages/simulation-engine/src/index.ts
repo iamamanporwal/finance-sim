@@ -9,3 +9,5 @@ export * from "./bounds";
 export * from "./explain";
 export * from "./scenarios";
 export * from "./sensitivity";
+export * from "./why";
+export * from "./actuals";

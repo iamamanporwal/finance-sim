@@ -64,6 +64,15 @@ export function NodeConfigEditor({ node }: { node: ModelNode }) {
           <MenuItem value="other">Other</MenuItem>
         </TextField>
       );
+    case "REVENUE_RECOGNITION":
+      return (
+        <TextField select size="small" label="Recognized revenue counts as" value={node.config.revenueType} onChange={(e) => setConfig({ revenueType: e.target.value })} helperText="Billed cash is deferred; only recognized revenue reaches the income statement.">
+          <MenuItem value="subscription">Subscription (recurring)</MenuItem>
+          <MenuItem value="usage">Usage</MenuItem>
+          <MenuItem value="topup">Top-ups</MenuItem>
+          <MenuItem value="other">Other</MenuItem>
+        </TextField>
+      );
     case "COST":
       return <CostConfig node={node} setConfig={setConfig} />;
     case "SPLIT":
@@ -100,6 +109,7 @@ function CostConfig({ node, setConfig }: { node: Extract<ModelNode, { type: "COS
         <MenuItem value="variable">Per unit (volume × cost)</MenuItem>
         <MenuItem value="percentage">Percentage of an amount</MenuItem>
         <MenuItem value="step">Step (tiers by volume)</MenuItem>
+        <MenuItem value="capacity">Capacity (whole units, e.g. staff per accounts)</MenuItem>
       </TextField>
       <Stack direction="row" spacing={1}>
         <TextField select size="small" fullWidth label="Counts as" value={c.costClass} onChange={(e) => setConfig({ ...c, costClass: e.target.value })}>

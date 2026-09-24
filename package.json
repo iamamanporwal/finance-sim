@@ -8,7 +8,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
     "check": "pnpm typecheck && pnpm test",
     "dev": "pnpm --filter @fin/web dev",
-    "build": "pnpm --filter @fin/web build"
+    "build": "pnpm --filter @fin/web build",
+    "perf": "vitest run --config apps/web/bench/vitest.config.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

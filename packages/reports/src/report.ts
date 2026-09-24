@@ -62,11 +62,27 @@ export function generateReport(input: ReportInput): Report {
   }
   section("executive_summary", "Executive summary", summary.join(" ") + "\n\nThese figures are a simulation, not a prediction: they follow directly from the assumptions listed below.");
 
-  // ── Current state ──
+  // ── Current state (actuals) vs where the forecast starts ──
+  const cs = model.currentState;
+  const stageLine = model.metadata.stage ? `Business stage: ${STAGE_LABELS[model.metadata.stage] ?? model.metadata.stage}. ` : "";
+  const today: string[] = [];
+  if (cs) {
+    const parts = [
+      cs.mrr !== undefined ? `MRR ${$(cs.mrr)}` : null,
+      cs.customers !== undefined ? `${count(cs.customers)} customers` : null,
+      cs.cash !== undefined ? `${$(cs.cash)} cash` : null,
+      cs.growth !== undefined ? `${pct(cs.growth)} monthly growth` : null,
+      cs.churn !== undefined ? `${pct(cs.churn)} monthly churn` : null,
+      cs.monthlyExpenses !== undefined ? `${$(cs.monthlyExpenses)} monthly expenses` : null,
+    ].filter(Boolean);
+    today.push(`As of ${cs.asOf} (actual, ${cs.source === "imported" ? "imported" : "entered by the user"}): ${parts.join(", ") || "no figures entered"}.`);
+  }
+  const actuals = [...model.actuals].sort((a, b) => a.period.localeCompare(b.period));
+  if (actuals.length) today.push(`Actuals are recorded for ${actuals.length} month${actuals.length === 1 ? "" : "s"} (${actuals[0]!.period} to ${actuals[actuals.length - 1]!.period}).`);
   section(
     "current_state",
-    "Starting point",
-    `The forecast starts in ${first.period} with ${count(first.customers.opening)} customers${hasCash ? ` and ${$(first.cash.opening)} in cash` : ""}. First-period revenue is ${$(first.revenue.total)} against costs of ${$(first.costs.total)}.\n\nActual (historical) data is not connected to this model yet, so every period is a forecast.`,
+    "Current state and starting point",
+    `${stageLine}${today.join(" ")}${today.length ? "\n\n" : ""}The forecast starts in ${first.period} with ${count(first.customers.opening)} customers${hasCash ? ` and ${$(first.cash.opening)} in cash` : ""}. First-period revenue is ${$(first.revenue.total)} against costs of ${$(first.costs.total)}.${today.length ? "" : "\n\nNo current state or actual data has been entered, so every figure is a forecast."}`,
   );
 
   // ── Assumptions ──
@@ -152,6 +168,8 @@ export function generateReport(input: ReportInput): Report {
   for (const e of result.events.filter((e) => e.type === "cash_negative" || e.type === "capacity_exceeded")) risks.push(`- ${t[e.period - 1]!.period}: ${e.message}`);
   if (input.monteCarlo?.probabilities.cashOut) risks.push(`- Monte Carlo: ${pct(input.monteCarlo.probabilities.cashOut, 0)} of runs run out of cash.`);
   if (pending.length) risks.push(`- ${pending.length} AI-suggested assumption(s) are not reviewed yet: ${pending.map((p) => p.name).join(", ")}.`);
+  const unconfirmed = model.customMetrics.filter((c) => c.status === "needs_confirmation");
+  if (unconfirmed.length) risks.push(`- Metric definitions not confirmed: ${unconfirmed.map((c) => c.label).join(", ")}. Guardrails on them may be misleading.`);
   section("risks", "Risks", risks.length ? risks.join("\n") : "No guardrail was breached and no critical event occurred in this run.");
 
   // ── Sensitivity ──
@@ -234,6 +252,8 @@ export function generateReport(input: ReportInput): Report {
     sections,
   };
 }
+
+const STAGE_LABELS: Record<string, string> = { idea: "Idea", "pre-launch": "Pre-launch", "pre-seed": "Pre-seed", seed: "Seed", growth: "Growth", scale: "Scale" };
 
 function milestonePeriods(n: number): number[] {
   const picks = new Set<number>([1]);

@@ -14,7 +14,7 @@ function harness(initial: Model = parseModel(acceptanceModel())) {
       model = next;
       commits.push(summary);
     },
-    runMonteCarlo: async (o) => runMonteCarlo(model, o),
+    runMonteCarlo: async (o, scenarioId) => runMonteCarlo(model, { ...o, scenarioId: scenarioId ?? undefined }),
   });
   const call = async (name: string, args: Record<string, unknown> = {}) => executeToolCall(tools, { id: "t", name, arguments: args });
   return { tools, call, commits, get model() { return model; } };
@@ -25,7 +25,7 @@ describe("copilot tools", () => {
     const { tools } = harness();
     expect(tools.map((t) => t.name)).toEqual([
       "get_model", "get_node", "get_connections", "create_node", "update_node", "delete_node", "connect_nodes", "disconnect_nodes",
-      "update_assumption", "create_scenario", "validate_model", "run_simulation", "compare_scenarios", "run_monte_carlo", "get_metric", "get_timeline",
+      "update_assumption", "create_scenario", "validate_model", "run_simulation", "compare_scenarios", "what_if", "compare_options", "create_standard_scenarios", "run_monte_carlo", "get_metric", "get_timeline",
       "run_sensitivity_analysis", "explain_metric", "find_bottleneck",
     ]);
     for (const d of toolDefinitions(tools)) expect(d.parameters.type).toBe("object");
@@ -90,10 +90,14 @@ describe("copilot tools", () => {
     expect((r.result as { error: string }).error).toBe("Circular dependency detected. Signup growth → Conversion → Customers → Subscription revenue → Cash → Signup growth");
   });
 
-  it("explain_metric traces MRR through the graph", async () => {
+  it("explain_metric traces MRR through the graph with engine values (\"Why?\")", async () => {
     const r = await harness().call("explain_metric", { metric: "mrr", period: 3 });
-    expect(r.result).toMatchObject({ value: "$7,606", formula: "subscription revenue per month" });
-    expect((r.result as { causal_chain: { node: string }[] }).causal_chain.map((c) => c.node)).toContain("Signup growth");
+    const res = r.result as { chain: string; explanation: string };
+    expect(res.chain).toBe("MRR ← Subscription revenue ← Customers ← Conversion ← Signup growth ← Signups");
+    expect(res.explanation).toContain("- MRR = $7,606");
+    expect(res.explanation).toMatch(/Price = \$39 \[assumption\]/);
+    const node = await harness().call("explain_metric", { node_id: "Cash" });
+    expect((node.result as { chain: string }).chain.startsWith("Cash")).toBe(true);
   });
 
   it("run_sensitivity_analysis ranks drivers", async () => {
@@ -101,13 +105,74 @@ describe("copilot tools", () => {
     expect((r.result as { ranking: { assumption: string }[] }).ranking[0]!.assumption).toBe("Signup growth");
   });
 
-  it("run_monte_carlo explains when nothing is uncertain, and runs when something is", async () => {
-    const none = await harness().call("run_monte_carlo", { runs: 100 });
-    expect((none.result as { error: string }).error).toMatch(/No assumption has an uncertainty range/);
+  it("run_monte_carlo adds visible ±25% ranges when nothing is uncertain (\"Run 10,000 simulations\")", async () => {
+    const h = harness();
+    const none = await h.call("run_monte_carlo", { runs: 100 });
+    expect(none.ok).toBe(true);
+    expect((none.result as { uncertainty_note: string }).uncertainty_note).toMatch(/medium \(±25%\) ranges were added to \d+ assumptions/);
+    expect(h.commits).toEqual(["AI added ±25% uncertainty ranges"]);
+    expect(h.model.parameters.find((p) => p.id === "p_price")!.distribution).toEqual({ type: "triangular", min: 29.25, mode: 39, max: 48.75 });
+    // Starting balances stay fixed.
+    expect(h.model.parameters.find((p) => p.id === "p_cash")!.distribution).toBeUndefined();
+    const slow = await h.call("run_monte_carlo", { runs: 200, scenario: "Slow growth" });
+    expect(slow.result).toMatchObject({ runs: 200, scenario: "Slow growth" });
     const m = acceptanceModel();
     m.parameters!.find((p) => p.id === "p_growth")!.distribution = { type: "triangular", min: 0.1, mode: 0.2, max: 0.3 };
     const r = await harness(parseModel(m)).call("run_monte_carlo", { runs: 100 });
     expect(r.result).toMatchObject({ runs: 100, uncertain_assumptions: ["Signup growth"] });
+  });
+
+  it("what_if creates a scenario, runs it and returns engine differences (\"Increase pricing by 20%\")", async () => {
+    const h = harness();
+    const r = await h.call("what_if", { name: "Pricing +20%", changes: [{ target: "Price", change_percent: 0.2 }] });
+    expect(r.ok).toBe(true);
+    const res = r.result as { changes: unknown[]; comparison: { scenario: string; mrr: { value: string; vs_base?: string } }[] };
+    expect(res.changes).toEqual([{ assumption: "Price", from: 39, to: 46.8 }]);
+    expect(res.comparison.map((c) => c.scenario)).toEqual(["Base model", "Pricing +20%"]);
+    expect(res.comparison[1]!.mrr.vs_base).toMatch(/^\+\$[\d.]+K \(\+20\.0%\)$/);
+    expect(h.model.parameters.find((p) => p.id === "p_price")!.value).toBe(39);
+  });
+
+  it("what_if changes a whole cost category (\"What happens if AI costs increase 50%?\")", async () => {
+    const m = acceptanceModel();
+    m.nodes!.find((n) => n.id === "cogs")!.config = { costType: "variable", costClass: "cogs", category: "ai" };
+    const h = harness(parseModel(m));
+    const r = await h.call("what_if", { name: "AI costs +50%", changes: [{ target: "AI costs", change_percent: 0.5 }] });
+    expect((r.result as { changes: unknown[] }).changes).toEqual([{ assumption: "COGS per customer", from: 8, to: 12 }]);
+    const none = await harness().call("what_if", { name: "x", changes: [{ target: "ai", change_percent: 0.5 }] });
+    expect((none.result as { error: string }).error).toMatch(/no ai costs to change/);
+  });
+
+  it("compare_options compares hiring with another plan; hiring adds a $0 payroll line to the base", async () => {
+    const h = harness();
+    const baseMrr = simulate(h.model).summary;
+    const r = await h.call("compare_options", {
+      options: [
+        { name: "Hire 2 engineers", changes: [{ target: "payroll", add: 20000 }] },
+        { name: "Raise prices", changes: [{ target: "Price", change_percent: 0.1 }] },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    const res = r.result as { notes: string[]; comparison: { scenario: string; cash: { vs_base?: string } }[] };
+    expect(res.notes[0]).toMatch(/Added a "Payroll" cost line at \$0/);
+    expect(res.comparison.map((c) => c.scenario)).toEqual(["Base model", "Hire 2 engineers", "Raise prices"]);
+    expect(res.comparison[1]!.cash.vs_base).toMatch(/^−\$480K/);
+    expect(simulate(h.model).summary).toEqual(baseMrr);
+    expect(h.model.scenarios.map((x) => x.name)).toEqual(["Base", "Slow growth", "Hire 2 engineers", "Raise prices"]);
+    const marketing = await harness().call("compare_options", { options: [{ name: "Ads", changes: [{ target: "marketing", add: 10000 }] }, { name: "B", changes: [{ target: "Price", value: 45 }] }] });
+    expect((marketing.result as { error: string }).error).toMatch(/Ask the user for the cost to acquire a customer/);
+  });
+
+  it("create_standard_scenarios runs a downside case (\"Run a downside scenario\")", async () => {
+    const h = harness();
+    const r = await h.call("create_standard_scenarios", {});
+    const res = r.result as { created: string[]; comparison: { scenario: string }[] };
+    // "Slow growth" is already a downside scenario, so only Upside is added.
+    expect(res.created).toEqual(["Upside"]);
+    expect(res.comparison.map((c) => c.scenario)).toEqual(["Base model", "Slow growth", "Upside"]);
+    const fresh = harness(parseModel({ ...acceptanceModel(), scenarios: [] }));
+    const r2 = await fresh.call("create_standard_scenarios", { magnitude: 0.1 });
+    expect((r2.result as { created: string[] }).created).toEqual(["Base", "Upside", "Downside"]);
   });
 
   it("find_bottleneck reports broken guardrails with causes", async () => {

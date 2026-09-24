@@ -2,6 +2,8 @@
  * Display formatting. Never renders NaN, Infinity or undefined: anything
  * non-finite becomes an em dash, and null metrics get an explicit label.
  */
+import { getMetricDefinition, type CustomMetric } from "@fin/model-schema";
+
 export type Currency = "USD" | "INR";
 
 const DASH = "—";
@@ -51,19 +53,27 @@ export function formatByUnit(v: number | null | undefined, unit: string | undefi
   return `${formatCount(v)} ${unit}`;
 }
 
-/** Metric-key-aware formatting for dashboards and timelines. */
-export function formatMetric(key: string, v: number | null | undefined, currency: Currency = "USD"): string {
-  switch (key) {
-    case "grossMargin":
-    case "churnRate":
+export type ValueKind = "currency" | "percent" | "count" | "months" | "number";
+
+/** Formats a value by kind (the unit vocabulary shared by metrics and "Why?" explanations). */
+export function formatKind(v: number | null | undefined, kind: ValueKind, currency: Currency = "USD"): string {
+  switch (kind) {
+    case "currency":
+      return formatCurrency(v, currency);
+    case "percent":
       return formatPercent(v);
-    case "runwayMonths":
-      return formatMonths(v);
-    case "customers":
-    case "newCustomers":
-    case "churnedCustomers":
+    case "months":
+      return formatMonths(v, "—");
+    case "count":
       return formatCount(v, { compact: true });
     default:
-      return formatCurrency(v, currency);
+      return formatCount(v);
   }
+}
+
+/** Metric-key-aware formatting for dashboards and timelines (built-in and custom metrics). */
+export function formatMetric(key: string, v: number | null | undefined, currency: Currency = "USD", customMetrics?: readonly CustomMetric[]): string {
+  if (key === "runwayMonths") return formatMonths(v);
+  const def = getMetricDefinition(key, customMetrics);
+  return formatKind(v, (def?.unit as ValueKind | undefined) ?? "currency", currency);
 }

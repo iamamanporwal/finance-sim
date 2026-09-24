@@ -2,9 +2,12 @@
 
 import type { SimulationResult } from "@fin/model-schema";
 import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { formatCount, formatCurrency, formatMonths, formatPercent, type Currency } from "@/lib/format";
+import { useEditor } from "@/store/editor-store";
 import { tokens } from "@/theme/theme";
 import { MetricInfo } from "./MetricInfo";
 
@@ -19,6 +22,7 @@ interface Kpi {
 
 /** KPI cards for the final period, with deltas against a baseline run when one exists. */
 export function KpiCards({ result, baseline, currency }: { result: SimulationResult; baseline?: SimulationResult | null; currency: Currency }) {
+  const openWhy = useEditor((s) => s.openWhy);
   const t = result.timeline;
   const last = t[t.length - 1]!;
   const base = baseline?.timeline[baseline.timeline.length - 1];
@@ -60,10 +64,17 @@ export function KpiCards({ result, baseline, currency }: { result: SimulationRes
     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" } }}>
       {kpis.map((k) => (
         <Paper key={k.key} sx={{ p: 2, border: 1, borderColor: "divider" }}>
-          <Typography variant="body2" color="text.secondary">
-            {k.label}
-            <MetricInfo metric={k.key} text={k.info} />
-          </Typography>
+          <Stack direction="row" sx={{ alignItems: "center" }}>
+            <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+              {k.label}
+              <MetricInfo metric={k.key} text={k.info} />
+            </Typography>
+            {k.key !== "breakEven" && (k.key !== "cash" || hasCash) && (
+              <Link component="button" variant="caption" underline="hover" onClick={() => openWhy({ metric: k.key }, t.length)} aria-label={`Why is ${k.label} ${k.value}?`}>
+                Why?
+              </Link>
+            )}
+          </Stack>
           <Typography className="num" sx={{ fontSize: 26, fontWeight: 600, lineHeight: 1.3, mt: 0.5 }}>
             {k.value}
           </Typography>

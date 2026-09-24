@@ -1,4 +1,4 @@
-import type { MetricDefinition } from "./types";
+import type { CustomMetric, MetricDefinition } from "./types";
 
 /**
  * Metrics produced for every timeline period (TimelinePoint.metrics).
@@ -25,10 +25,30 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
   { key: "cac", label: "CAC", unit: "currency", higherIsBetter: false, description: "Customer acquisition cost: marketing spend ÷ new customers in the period." },
   { key: "cacPaybackMonths", label: "CAC payback", unit: "months", higherIsBetter: false, description: "Months of gross profit from one customer needed to earn back what it cost to acquire them." },
   { key: "runwayMonths", label: "Runway", unit: "months", higherIsBetter: true, description: "Months until cash runs out at the current burn. Empty when not burning." },
+  { key: "contribution", label: "Contribution", unit: "currency", higherIsBetter: true, description: "Gross profit minus variable operating costs (costs that grow with volume). Fixed costs and marketing spend are not deducted." },
+  { key: "contributionMargin", label: "Contribution margin", unit: "percent", higherIsBetter: true, description: "Contribution ÷ revenue: what each dollar of revenue leaves to pay for fixed costs and growth." },
+  { key: "newMrr", label: "New MRR", unit: "currency", higherIsBetter: true, description: "MRR from customers who joined in the period." },
+  { key: "nrr", label: "NRR (monthly)", unit: "percent", higherIsBetter: true, description: "Net revenue retention: this period's MRR from customers who were already here, ÷ last period's MRR. Above 100% means upgrades outweigh churn and downgrades." },
+  { key: "nrrAnnual", label: "NRR (12 months)", unit: "percent", higherIsBetter: true, description: "Monthly NRR compounded over the last 12 months. Empty until 12 months have passed." },
+  { key: "deferredRevenue", label: "Deferred revenue", unit: "currency", description: "Cash billed in advance that has not been earned yet (a liability, not revenue)." },
+  { key: "creditBalance", label: "Credit balance", unit: "count", description: "Credits customers hold at the end of the period." },
+  { key: "creditsBurned", label: "Credits burned", unit: "count", description: "Credits used in the period." },
+  { key: "creditsExpired", label: "Credits expired", unit: "count", description: "Unused credits that expired in the period." },
+  { key: "burnDepth", label: "Burn depth", unit: "percent", description: "Share of available credits that customers used in the period." },
+  { key: "breakageRate", label: "Breakage", unit: "percent", higherIsBetter: false, description: "Share of available credits that expired unused in the period." },
+  { key: "rationingRate", label: "Rationing", unit: "percent", higherIsBetter: false, description: "Share of credit demand that could not be served because wallets ran dry." },
 ];
 
 export const METRIC_KEYS = new Set(METRIC_DEFINITIONS.map((m) => m.key));
 
-export function getMetricDefinition(key: string): MetricDefinition | undefined {
-  return METRIC_DEFINITIONS.find((m) => m.key === key);
+export function getMetricDefinition(key: string, custom?: readonly CustomMetric[]): MetricDefinition | undefined {
+  const builtIn = METRIC_DEFINITIONS.find((m) => m.key === key);
+  if (builtIn) return builtIn;
+  const c = custom?.find((m) => m.key === key);
+  return c ? { key: c.key, label: c.label, unit: c.unit, description: c.description || `Custom metric: ${c.expression}`, higherIsBetter: c.higherIsBetter } : undefined;
+}
+
+/** Built-in metrics followed by the model's custom metrics. */
+export function metricDefinitionsFor(model: { customMetrics?: readonly CustomMetric[] }): MetricDefinition[] {
+  return [...METRIC_DEFINITIONS, ...(model.customMetrics ?? []).map((c) => getMetricDefinition(c.key, model.customMetrics)!)];
 }

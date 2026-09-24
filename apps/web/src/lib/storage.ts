@@ -2,10 +2,12 @@
  * Browser persistence for models (V1: no database yet). Every access is
  * wrapped: storage can be unavailable (private mode, blocked site data).
  */
-import { ModelSchema, type Model } from "@fin/model-schema";
+import { ModelSchema, type Model, type ModelVersion } from "@fin/model-schema";
+import { parseVersions, type VersionStore } from "./versions";
 
 const INDEX_KEY = "fin:models";
 const modelKey = (id: string) => `fin:model:${id}`;
+const versionsKey = (id: string) => `fin:versions:${id}`;
 
 export interface ModelSummary {
   id: string;
@@ -55,9 +57,16 @@ export function saveModel(model: Model): { ok: boolean; savedAt: string } {
   return { ok, savedAt };
 }
 
+/** Version history in browser storage. */
+export const browserVersionStore: VersionStore = {
+  read: (id) => parseVersions(read<unknown>(versionsKey(id))),
+  write: (id, versions: ModelVersion[]) => write(versionsKey(id), versions),
+};
+
 export function deleteModel(id: string): void {
   try {
     window.localStorage.removeItem(modelKey(id));
+    window.localStorage.removeItem(versionsKey(id));
   } catch {
     // ignore
   }

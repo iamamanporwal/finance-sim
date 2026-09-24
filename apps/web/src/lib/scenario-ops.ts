@@ -90,22 +90,25 @@ export const GUARDRAIL_SUGGESTIONS: Omit<Guardrail, "id" | "label" | "enabled">[
   { metric: "churnRate", operator: "<", threshold: 0.08, severity: "warning" },
   { metric: "cacPaybackMonths", operator: "<", threshold: 12, severity: "warning" },
   { metric: "cash", operator: ">", threshold: 0, severity: "critical" },
+  { metric: "breakageRate", operator: "<", threshold: 0.08, severity: "warning" },
+  { metric: "rationingRate", operator: "<", threshold: 0.15, severity: "warning" },
+  { metric: "nrr", operator: ">=", threshold: 1, severity: "warning" },
 ];
 
-export function formatThreshold(metric: string, v: number, currency = "USD"): string {
-  const unit = getMetricDefinition(metric)?.unit;
+export function formatThreshold(metric: string, v: number, currency = "USD", model?: Pick<Model, "customMetrics">): string {
+  const unit = getMetricDefinition(metric, model?.customMetrics)?.unit;
   if (unit === "percent") return `${Number((v * 100).toPrecision(10))}%`;
   if (unit === "months") return `${v} months`;
   if (unit === "currency") return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0, notation: Math.abs(v) >= 100000 ? "compact" : "standard" }).format(v);
   return String(v);
 }
 
-export function guardrailLabel(g: Pick<Guardrail, "metric" | "operator" | "threshold">, currency = "USD"): string {
-  return `${getMetricDefinition(g.metric)?.label ?? g.metric} ${g.operator} ${formatThreshold(g.metric, g.threshold, currency)}`;
+export function guardrailLabel(g: Pick<Guardrail, "metric" | "operator" | "threshold">, currency = "USD", model?: Pick<Model, "customMetrics">): string {
+  return `${getMetricDefinition(g.metric, model?.customMetrics)?.label ?? g.metric} ${g.operator} ${formatThreshold(g.metric, g.threshold, currency, model)}`;
 }
 
 export function addGuardrail(model: Model, g: Omit<Guardrail, "id" | "label" | "enabled"> & { label?: string }): Model {
-  const guardrail: Guardrail = { id: newId("g"), enabled: true, ...g, label: g.label ?? guardrailLabel(g, model.settings.currency) };
+  const guardrail: Guardrail = { id: newId("g"), enabled: true, ...g, label: g.label ?? guardrailLabel(g, model.settings.currency, model) };
   return { ...model, guardrails: [...model.guardrails, guardrail] };
 }
 
@@ -116,7 +119,7 @@ export function updateGuardrail(model: Model, id: string, patch: Partial<Omit<Gu
       if (g.id !== id) return g;
       const next = { ...g, ...patch };
       // Keep auto-generated labels in sync with the rule.
-      if (patch.label === undefined && g.label === guardrailLabel(g, model.settings.currency)) next.label = guardrailLabel(next, model.settings.currency);
+      if (patch.label === undefined && g.label === guardrailLabel(g, model.settings.currency, model)) next.label = guardrailLabel(next, model.settings.currency, model);
       return next;
     }),
   };

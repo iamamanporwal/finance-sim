@@ -24,12 +24,13 @@ import { AIStatusNotice, SettingsLink } from "./AIStatusNotice";
 import { SafeMarkdown } from "./SafeMarkdown";
 
 const SUGGESTIONS = [
-  "Run the simulation and summarize the results.",
-  "Which assumption matters most for MRR?",
+  "Why is MRR what it is at the end of the forecast?",
+  "Increase pricing by 20%.",
   "What happens if churn doubles?",
-  "Increase pricing by 20% in a new scenario and compare.",
-  "How much cash will we have in 18 months?",
-  "Add a 2.9% payment processing fee.",
+  "Run a downside scenario.",
+  "What happens if AI costs increase 50%?",
+  "Compare hiring 2 engineers ($8K/month each) vs raising prices 10%.",
+  "Run 10,000 simulations.",
 ];
 
 const TOOL_LABELS: Record<string, string> = {
@@ -44,6 +45,9 @@ const TOOL_LABELS: Record<string, string> = {
   update_assumption: "Changed an assumption",
   create_scenario: "Created a scenario",
   compare_scenarios: "Compared scenarios",
+  what_if: "Ran a what-if scenario",
+  compare_options: "Compared options",
+  create_standard_scenarios: "Created upside/downside scenarios",
   validate_model: "Validated the model",
   run_simulation: "Ran the simulation",
   run_monte_carlo: "Ran Monte Carlo",

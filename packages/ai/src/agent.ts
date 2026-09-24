@@ -33,6 +33,10 @@ export interface AgentResult {
 
 const MAX_RESULT_CHARS = 8000;
 
+/** Sent when the model stops with neither an answer nor a tool call (local models sometimes do). */
+export const CONTINUE_NUDGE = "You have not answered yet. Continue: call the next tool you need, or answer the user now using only the tool results above.";
+const MAX_EMPTY_REPLIES = 2;
+
 export function toolDefinitions(tools: readonly AgentTool<never>[]): ToolDefinition[] {
   return tools.map((t) => ({ name: t.name, description: t.description, parameters: z.toJSONSchema(t.parameters as z.ZodType, { io: "input", unrepresentable: "any" }) as Record<string, unknown> }));
 }
@@ -74,12 +78,19 @@ export async function runAgent(opts: {
   const defs = toolDefinitions(opts.tools);
   const toolRuns: ToolRun[] = [];
   const maxSteps = opts.maxSteps ?? 8;
+  let empty = 0;
   for (let step = 0; step < maxSteps; step++) {
     const res = await opts.provider.tools({ messages, tools: defs, model: opts.model, signal: opts.signal, temperature: 0.2 });
     const msg = res.message;
+    if (!msg.toolCalls?.length && !msg.content.trim() && empty < MAX_EMPTY_REPLIES && step < maxSteps - 1) {
+      // An empty reply is never the final answer while steps remain.
+      empty++;
+      messages.push({ role: "user", content: CONTINUE_NUDGE });
+      continue;
+    }
     messages.push(msg);
     if (msg.content) opts.onEvent?.({ type: "assistant", content: msg.content });
-    if (!msg.toolCalls?.length) return { messages, final: msg.content, toolRuns, truncated: false };
+    if (!msg.toolCalls?.length) return { messages: messages.filter((m) => m.content !== CONTINUE_NUDGE), final: msg.content, toolRuns, truncated: false };
     for (const call of msg.toolCalls) {
       opts.onEvent?.({ type: "tool-call", call });
       const run = await executeToolCall(opts.tools, call);

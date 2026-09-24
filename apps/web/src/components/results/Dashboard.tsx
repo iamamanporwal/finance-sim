@@ -10,6 +10,8 @@ import Typography from "@mui/material/Typography";
 import dynamic from "next/dynamic";
 import type { Currency } from "@/lib/format";
 import { useEditor } from "@/store/editor-store";
+import { tokens } from "@/theme/theme";
+import { TodayPanel, StageInsights } from "./BusinessContext";
 import { KpiCards } from "./KpiCards";
 import { PeriodDetail } from "./PeriodDetail";
 import { Timeline } from "./Timeline";
@@ -20,6 +22,7 @@ const Charts = dynamic(() => import("./Charts"), {
   ssr: false,
   loading: () => <Skeleton variant="rounded" height={520} />,
 });
+const ActualsChart = dynamic(() => import("./ActualsChart"), { ssr: false, loading: () => <Skeleton variant="rounded" height={280} /> });
 
 export function Dashboard() {
   const model = useEditor((s) => s.model)!;
@@ -75,14 +78,23 @@ export function Dashboard() {
       </Stack>
       <Stack spacing={2}>
         {problem}
+        <TodayPanel model={model} result={result} />
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", pt: 1 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: tokens.simulation }}>Forecast · simulated</Typography>
+          <Typography variant="caption" color="text.secondary">
+            From {result.timeline[0]!.period}. Simulated from your assumptions — not a prediction.
+          </Typography>
+        </Stack>
         {change && changedParam && <WhatChanged change={change} result={result} currentValue={changedParam.value} currency={currency} />}
         <KpiCards result={result} baseline={change?.baseline} currency={currency} />
+        <StageInsights model={model} result={result} />
+        {model.actuals.length > 0 && <ActualsChart model={model} result={result} />}
         <Charts result={result} currency={currency} selectedPeriod={selected} onSelectPeriod={setSelected} />
         <Box>
           <Typography variant="h3" sx={{ mb: 1 }}>
             Timeline
           </Typography>
-          <Timeline result={result} selected={period} onSelect={setSelected} />
+          <Timeline result={result} selected={period} onSelect={setSelected} actualPeriods={model.actuals.map((a) => a.period).filter((x) => x < result.timeline[0]!.period.slice(0, 7)).sort()} />
         </Box>
         <PeriodDetail model={model} result={result} period={period} currency={currency} />
       </Stack>

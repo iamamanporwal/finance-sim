@@ -118,17 +118,29 @@ export interface MetricExplanation {
   drivers: MetricDriver[];
 }
 
-const METRIC_ROOT_TYPES: Record<string, string[]> = {
-  revenue: ["REVENUE"],
+export const METRIC_ROOT_TYPES: Record<string, string[]> = {
+  revenue: ["REVENUE", "REVENUE_RECOGNITION"],
   mrr: ["REVENUE"],
+  newMrr: ["REVENUE"],
+  nrr: ["REVENUE"],
+  nrrAnnual: ["REVENUE"],
+  contribution: ["REVENUE", "REVENUE_RECOGNITION", "COST"],
+  contributionMargin: ["REVENUE", "REVENUE_RECOGNITION", "COST"],
+  deferredRevenue: ["REVENUE_RECOGNITION"],
+  creditBalance: ["CREDIT_WALLET"],
+  creditsBurned: ["CREDIT_WALLET"],
+  creditsExpired: ["CREDIT_WALLET"],
+  burnDepth: ["CREDIT_WALLET"],
+  breakageRate: ["CREDIT_WALLET"],
+  rationingRate: ["CREDIT_WALLET"],
   arr: ["REVENUE"],
   arpu: ["REVENUE", "CUSTOMERS"],
   cogs: ["COST"],
-  grossProfit: ["REVENUE", "COST"],
-  grossMargin: ["REVENUE", "COST"],
+  grossProfit: ["REVENUE", "REVENUE_RECOGNITION", "COST"],
+  grossMargin: ["REVENUE", "REVENUE_RECOGNITION", "COST"],
   opex: ["COST", "ACQUISITION"],
   totalCosts: ["COST", "ACQUISITION"],
-  operatingProfit: ["REVENUE", "COST", "ACQUISITION"],
+  operatingProfit: ["REVENUE", "REVENUE_RECOGNITION", "COST", "ACQUISITION"],
   customers: ["CUSTOMERS"],
   newCustomers: ["CUSTOMERS"],
   churnedCustomers: ["CUSTOMERS"],
@@ -141,7 +153,7 @@ const METRIC_ROOT_TYPES: Record<string, string[]> = {
   cacPaybackMonths: ["ACQUISITION", "REVENUE"],
 };
 
-const METRIC_FORMULAS: Record<string, string> = {
+export const METRIC_FORMULAS: Record<string, string> = {
   revenue: "sum of all revenue nodes",
   mrr: "subscription revenue per month",
   arr: "MRR × 12",
@@ -162,6 +174,18 @@ const METRIC_FORMULAS: Record<string, string> = {
   runwayMonths: "cash ÷ monthly burn",
   cac: "marketing spend ÷ new customers",
   cacPaybackMonths: "CAC ÷ (monthly ARPU × gross margin)",
+  contribution: "gross profit − variable operating costs",
+  contributionMargin: "contribution ÷ revenue",
+  newMrr: "new customers × their plan's price, per month",
+  nrr: "(MRR − new MRR) ÷ last period's MRR",
+  nrrAnnual: "monthly NRR compounded over 12 months",
+  deferredRevenue: "billed in advance − recognized so far",
+  creditBalance: "sum of credit wallet balances",
+  creditsBurned: "min(credit demand, available credits)",
+  creditsExpired: "unused credits × expiry rate",
+  burnDepth: "credits burned ÷ credits available",
+  breakageRate: "credits expired ÷ credits available",
+  rationingRate: "credits rationed ÷ credit demand",
 };
 
 /** Traces a metric back through the dependency graph with engine values ("Why?"). */

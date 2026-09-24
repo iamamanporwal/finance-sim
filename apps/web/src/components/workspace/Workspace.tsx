@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import { pendingAssumptions } from "@/lib/assumption-review";
 import Snackbar from "@mui/material/Snackbar";
 import { ReactFlowProvider } from "@xyflow/react";
+import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { ResultsView } from "@/components/results/ResultsView";
 import { ReportView } from "@/components/report/ReportView";
@@ -21,12 +22,22 @@ import { SimulatePanel } from "./SimulatePanel";
 import { TopBar } from "./TopBar";
 import { useShortcuts } from "./useShortcuts";
 
+// Dialogs load on first use.
+const WhyDialog = dynamic(() => import("@/components/results/WhyDialog"), { ssr: false });
+const BusinessDialog = dynamic(() => import("@/components/business/BusinessDialog"), { ssr: false });
+const ExportDialog = dynamic(() => import("@/components/export/ExportDialog"), { ssr: false });
+const VersionsDialog = dynamic(() => import("@/components/versions/VersionsDialog"), { ssr: false });
+
 export default function Workspace({ model, initialMode }: { model: Model; initialMode: Mode }) {
   const load = useEditor((s) => s.load);
   const loaded = useEditor((s) => s.model?.id === model.id);
   const mode = useEditor((s) => s.mode);
   const notice = useEditor((s) => s.notice);
   const clearNotice = useEditor((s) => s.clearNotice);
+  const whyOpen = useEditor((s) => s.why !== null);
+  const businessOpen = useEditor((s) => s.businessTab !== null);
+  const panel = useEditor((s) => s.panel);
+  const setPanel = useEditor((s) => s.setPanel);
 
   useEffect(() => {
     load(model);
@@ -85,6 +96,10 @@ export default function Workspace({ model, initialMode }: { model: Model; initia
       </Box>
       <CommandPalette />
       <CopilotPanel />
+      {whyOpen && <WhyDialog />}
+      {businessOpen && <BusinessDialog />}
+      {panel === "export" && <ExportDialog open onClose={() => setPanel(null)} />}
+      {panel === "versions" && <VersionsDialog open onClose={() => setPanel(null)} />}
       <Snackbar open={!!notice} autoHideDuration={3500} onClose={clearNotice} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
         {notice ? (
           <Alert severity={notice.severity} onClose={clearNotice} variant="filled" sx={{ width: "100%" }}>

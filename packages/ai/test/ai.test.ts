@@ -179,3 +179,20 @@ describe("server request handling", () => {
     expect(errorToResponseBody(new Error("secret internals")).body.error).toBe("Unexpected AI error.");
   });
 });
+
+describe("agent: empty replies", () => {
+  it("asks the model to continue instead of ending on an empty reply", async () => {
+    const { runAgent, ScriptedProvider, CONTINUE_NUDGE } = await import("../src");
+    const { z } = await import("zod");
+    const tools = [{ name: "get_model", description: "", parameters: z.object({}), run: () => ({ ok: true }) }];
+    const provider = new ScriptedProvider([
+      { role: "assistant", content: "", toolCalls: [{ id: "1", name: "get_model", arguments: {} }] },
+      "",
+      "Here is the answer.",
+    ]);
+    const r = await runAgent({ provider, tools: tools as never, messages: [{ role: "user", content: "Compare A vs B" }] });
+    expect(r.final).toBe("Here is the answer.");
+    expect(provider.requests[2]!.messages.some((m) => m.content === CONTINUE_NUDGE)).toBe(true);
+    expect(r.messages.some((m) => m.content === CONTINUE_NUDGE)).toBe(false);
+  });
+});
