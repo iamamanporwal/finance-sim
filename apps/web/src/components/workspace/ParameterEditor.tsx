@@ -15,6 +15,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { distributionForLevel, uncertaintyLevel, UNCERTAINTY_LABELS, type UncertaintyLevel } from "@/lib/uncertainty";
 import { formatByUnit, type Currency } from "@/lib/format";
+import { acceptAssumption, describeRejection, rejectAssumption } from "@/lib/assumption-review";
 import { effectiveValue, overrideSource } from "@/lib/scenario-ops";
 import { useEditor } from "@/store/editor-store";
 import { NumberInput, TextInput, unitPresentation } from "./NumberInput";
@@ -86,6 +87,7 @@ export function ParameterEditor({ param, slot }: { param: Parameter; slot: SlotS
           )}
         </Stack>
       )}
+      {(param.status === "pending" || param.status === "rejected") && <ReviewChip param={param} />}
       <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
         <TextField
           select
@@ -210,6 +212,43 @@ function DistributionEditor({ param, scale }: { param: Parameter; scale: number 
           {field("Std. deviation", d.stdDev, (x) => set({ ...d, stdDev: x }))}
         </Stack>
       )}
+    </Stack>
+  );
+}
+
+function ReviewChip({ param }: { param: Parameter }) {
+  const apply = useEditor((s) => s.apply);
+  const notify = useEditor((s) => s.notify);
+  if (param.status === "rejected") {
+    return (
+      <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5 }}>
+        You rejected the AI’s value. Enter your own number to use this assumption.
+      </Typography>
+    );
+  }
+  return (
+    <Stack direction="row" spacing={0.75} sx={{ mt: 0.75, alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+      <Chip size="small" color="secondary" label={`AI suggested${param.confidence ? ` · ${param.confidence} confidence` : ""}`} />
+      <Button size="small" onClick={() => apply((m) => acceptAssumption(m, param.id))}>
+        Accept
+      </Button>
+      <Button
+        size="small"
+        color="error"
+        onClick={() => {
+          let msg = "";
+          let sev: "info" | "warning" = "info";
+          apply((m) => {
+            const r = rejectAssumption(m, param.id);
+            msg = describeRejection(r.outcome, param.name, r.nodeLabels);
+            sev = r.outcome === "marked-rejected" ? "warning" : "info";
+            return r.model;
+          });
+          notify(msg, sev);
+        }}
+      >
+        Reject
+      </Button>
     </Stack>
   );
 }

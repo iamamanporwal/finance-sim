@@ -25,7 +25,7 @@ describe("copilot tools", () => {
     const { tools } = harness();
     expect(tools.map((t) => t.name)).toEqual([
       "get_model", "get_node", "get_connections", "create_node", "update_node", "delete_node", "connect_nodes", "disconnect_nodes",
-      "update_assumption", "create_scenario", "validate_model", "run_simulation", "run_monte_carlo", "get_metric", "get_timeline",
+      "update_assumption", "create_scenario", "validate_model", "run_simulation", "compare_scenarios", "run_monte_carlo", "get_metric", "get_timeline",
       "run_sensitivity_analysis", "explain_metric", "find_bottleneck",
     ]);
     for (const d of toolDefinitions(tools)) expect(d.parameters.type).toBe("object");
@@ -64,6 +64,11 @@ describe("copilot tools", () => {
     expect(h.model.scenarios.find((s) => s.id === id)!.overrides).toEqual([{ parameterId: "p_churn", value: 0.1 }]);
     const sim = await h.call("run_simulation", { scenario: "Churn doubles" });
     expect((sim.result as { scenario: string }).scenario).toBe(id);
+    const cmp = await h.call("compare_scenarios", { scenarios: ["Churn doubles"] });
+    const [base, doubled] = cmp.result as { scenario: string; mrr: { value: string; vs_base?: string } }[];
+    expect(base!.scenario).toBe("Base model");
+    expect(base!.mrr.vs_base).toBeUndefined();
+    expect(doubled!.mrr.vs_base).toMatch(/^−\$[\d.]+K \(−\d+\.\d%\)$/);
   });
 
   it("create_node + connect_nodes add a payment fee that reaches cash", async () => {

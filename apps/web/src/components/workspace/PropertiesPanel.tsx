@@ -22,6 +22,7 @@ import { formatByUnit, type Currency } from "@/lib/format";
 import { bindNewParameter, removeElements, unbindParameter, updateModelInfo, updateNode } from "@/lib/model-ops";
 import { useEditor } from "@/store/editor-store";
 import { categoryColors } from "@/theme/theme";
+import { AssumptionReview } from "../ai/AssumptionReview";
 import { NodeConfigEditor } from "./NodeConfigEditor";
 import { TextInput } from "./NumberInput";
 import { ParameterEditor } from "./ParameterEditor";
@@ -264,6 +265,20 @@ function EdgeProperties({ edgeIds }: { edgeIds: string[] }) {
   );
 }
 
+function ReviewSection() {
+  const model = useEditor((s) => s.model)!;
+  const show = model.metadata.templateId?.startsWith("ai:") || model.parameters.some((p) => p.source === "ai");
+  if (!show) return null;
+  return (
+    <>
+      <Section title="AI review">
+        <AssumptionReview />
+      </Section>
+      <Divider />
+    </>
+  );
+}
+
 function ModelOverview() {
   const model = useEditor((s) => s.model)!;
   const validation = useEditor((s) => s.validation);
@@ -285,6 +300,7 @@ function ModelOverview() {
         </Stack>
       </Section>
       <Divider />
+      <ReviewSection />
       <Section title="Model check">
         {issues.length === 0 ? (
           <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", color: "success.main" }}>

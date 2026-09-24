@@ -1,5 +1,6 @@
 "use client";
 
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RedoIcon from "@mui/icons-material/Redo";
 import UndoIcon from "@mui/icons-material/Undo";
@@ -14,6 +15,7 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import { useCopilot } from "@/store/copilot-store";
 import { useEditor, type Mode } from "@/store/editor-store";
 import { tokens } from "@/theme/theme";
 
@@ -72,7 +74,12 @@ export function TopBar() {
           </span>
         </Tooltip>
       </Stack>
-      <Tooltip title="Run simulation (⌘↵)">
+      <Tooltip title="Chat with the AI copilot" describeChild>
+        <Button variant="outlined" color="secondary" startIcon={<AutoAwesomeIcon />} onClick={() => useCopilot.getState().setOpen(!useCopilot.getState().open)}>
+          Ask AI
+        </Button>
+      </Tooltip>
+      <Tooltip title="Run simulation (⌘↵)" describeChild>
         <Button variant="contained" color="secondary" startIcon={<PlayArrowIcon />} onClick={runAndShow}>
           Run simulation
         </Button>

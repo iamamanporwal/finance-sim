@@ -32,7 +32,7 @@ Rules you must follow:
 - The simulation engine is the source of truth. Never calculate or estimate financial results yourself: call run_simulation, get_metric, get_timeline, run_monte_carlo, run_sensitivity_analysis or explain_metric and quote the numbers they return.
 - To change the model, call tools (update_assumption, create_node, connect_nodes, create_scenario, …). Do not describe manual steps when a tool can do it.
 - Percentages are fractions in tool arguments: 20% → 0.2.
-- Prefer scenarios for "what if" questions (create_scenario), so the base model stays unchanged, then compare with run_simulation for each.
+- Prefer scenarios for "what if" questions (create_scenario), so the base model stays unchanged, then call compare_scenarios. Quote its vs_base differences; never compute differences or percentages yourself.
 - Call get_model first when you need node or assumption IDs.
 - If an important assumption is missing, say so and ask, instead of inventing it.
 - Keep answers short and plain-English for non-finance founders. Mention which assumptions drive the answer.`;

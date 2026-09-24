@@ -1,6 +1,9 @@
 "use client";
 
 import AddIcon from "@mui/icons-material/Add";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import Chip from "@mui/material/Chip";
+import { DescribeBusinessDialog } from "@/components/ai/DescribeBusinessDialog";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -26,6 +29,7 @@ export function ModelsHome() {
   const router = useRouter();
   const [models, setModels] = useState<ModelSummary[] | null>(null);
   const [confirm, setConfirm] = useState<ModelSummary | null>(null);
+  const [describeOpen, setDescribeOpen] = useState(false);
 
   useEffect(() => setModels(listModels()), []);
 
@@ -36,6 +40,18 @@ export function ModelsHome() {
 
   const starters = (
     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
+      <Card sx={{ gridColumn: { sm: "1 / -1" }, borderColor: `${tokens.simulation}66` }}>
+        <CardActionArea sx={{ p: 2 }} onClick={() => setDescribeOpen(true)}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <AutoAwesomeIcon sx={{ color: tokens.simulation }} />
+            <Typography sx={{ fontWeight: 600 }}>Describe my business with AI</Typography>
+            <Chip size="small" label="Recommended" color="secondary" variant="outlined" />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Tell us how your business works in plain words. Local AI extracts the assumptions, you review them, and we build the model.
+          </Typography>
+        </CardActionArea>
+      </Card>
       {STARTER_EXAMPLES.map((ex) => (
         <Card key={ex.id}>
           <CardActionArea sx={{ p: 2, height: "100%" }} onClick={() => open({ ...ex.build(), id: newId("m"), metadata: { templateId: ex.id, createdAt: new Date().toISOString() } })}>
@@ -60,9 +76,12 @@ export function ModelsHome() {
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <Box sx={{ height: 56, px: 3, display: "flex", alignItems: "center", borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
-        <Typography component={Link} href="/" sx={{ fontWeight: 700, color: tokens.primary, textDecoration: "none" }}>
+        <Typography component={Link} href="/" sx={{ fontWeight: 700, color: tokens.primary, textDecoration: "none", flex: 1 }}>
           ◆ FinSim
         </Typography>
+        <Button component={Link} href="/app/settings" size="small">
+          Settings
+        </Button>
       </Box>
       <Box sx={{ maxWidth: 960, mx: "auto", px: 2, py: 4 }}>
         {models === null ? null : models.length === 0 ? (
@@ -102,6 +121,14 @@ export function ModelsHome() {
           </Stack>
         )}
       </Box>
+      <DescribeBusinessDialog
+        open={describeOpen}
+        onClose={() => setDescribeOpen(false)}
+        onCreated={(m) => {
+          setDescribeOpen(false);
+          open(m);
+        }}
+      />
       <Dialog open={!!confirm} onClose={() => setConfirm(null)}>
         <DialogTitle>Delete “{confirm?.name}”?</DialogTitle>
         <DialogContent>

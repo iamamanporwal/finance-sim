@@ -8,6 +8,7 @@ import type { AgentTool } from "@fin/ai";
 import { METRIC_DEFINITIONS, NODE_CATALOG, outputsFor, slotsFor, type Model, type SimulationResult } from "@fin/model-schema";
 import type { MonteCarloOptions, MonteCarloResult } from "@fin/monte-carlo";
 import {
+  compareScenarios,
   explainGuardrail,
   explainMetric,
   resolveParameterValues,
@@ -15,6 +16,7 @@ import {
   simulate,
   validateForSimulation,
   validateParsedForSimulation,
+  type ScenarioComparisonRow,
 } from "@fin/simulation-engine";
 import { z } from "zod";
 import { formatMetric, type Currency } from "@/lib/format";
@@ -305,6 +307,46 @@ export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
       description: "Run the simulation (base model or a scenario) and return the key results at the end of the forecast.",
       parameters: z.object({ scenario: scenarioArg }),
       run: ({ scenario }) => summarize(run(scenario)),
+    }),
+    tool({
+      name: "compare_scenarios",
+      description: "Compare the base model with one or more scenarios at the end of the forecast. Returns each metric plus the engine-computed difference from the base model. Use this instead of calculating differences yourself.",
+      parameters: z.object({ scenarios: z.array(z.string()).min(1).max(6).describe("Scenario IDs or names") }),
+      run: ({ scenarios }) => {
+        const ids = scenarios.map((s) => scenarioId(s)).filter((s): s is string => !!s);
+        const v = validateForSimulation(model());
+        if (!v.valid) throw new ToolError(`Simulation blocked: ${v.issues.filter((i) => i.severity === "error").map((i) => i.message).join(" ")}`);
+        const rows = compareScenarios(model(), [null, ...ids]);
+        const base = rows[0]!;
+        const pick = (r: ScenarioComparisonRow) => ({
+          mrr: r.summary?.mrr ?? null,
+          arr: r.summary?.arr ?? null,
+          customers: r.summary?.customers ?? null,
+          grossMargin: r.summary?.grossMargin ?? null,
+          cash: r.summary?.cash ?? null,
+          runwayMonths: r.minRunwayMonths ?? null,
+        });
+        const b = pick(base);
+        return rows.map((r) => {
+          if (r.error) return { scenario: r.name, error: r.error };
+          const cur = pick(r);
+          const metrics = Object.fromEntries(
+            (Object.keys(cur) as (keyof typeof cur)[]).map((k) => {
+              const value = cur[k];
+              const baseValue = b[k];
+              const diff = value !== null && baseValue !== null ? value - baseValue : null;
+              const pct = diff !== null && baseValue ? diff / Math.abs(baseValue) : null;
+              return [k, { value: fmt(k, value), ...(r.scenarioId ? { vs_base: diff === null ? "n/a" : `${diff >= 0 ? "+" : "−"}${fmt(k === "grossMargin" ? "grossMargin" : k, Math.abs(diff))}${pct === null ? "" : ` (${pct >= 0 ? "+" : "−"}${Math.abs(pct * 100).toFixed(1)}%)`}` } : {}) }];
+            }),
+          );
+          return {
+            scenario: r.name,
+            final_period: r.result?.timeline[r.result.timeline.length - 1]?.period,
+            break_even: r.summary?.breakEvenPeriod ? r.result!.timeline[r.summary.breakEvenPeriod - 1]!.period : "not reached",
+            ...metrics,
+          };
+        });
+      },
     }),
     tool({
       name: "run_monte_carlo",

@@ -8,6 +8,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
 import { searchPresets } from "@/lib/presets";
+import { useCopilot } from "@/store/copilot-store";
 import { useEditor } from "@/store/editor-store";
 import { useAddAtCenter } from "./NodeLibrary";
 
@@ -29,7 +30,12 @@ export function CommandPalette() {
     const s = useEditor.getState;
     const base: Command[] = [
       { id: "run", label: "Run simulation", hint: "⌘↵", run: () => { s().run(); s().setMode(s().simStatus === "ok" ? "results" : "simulate"); } },
+      { id: "ai", label: "Ask AI", hint: "copilot", run: () => useCopilot.getState().setOpen(true) },
       { id: "results", label: "Show results dashboard", run: () => s().setMode("results") },
+      { id: "mc", label: "Run Monte Carlo", run: () => s().setResultsTab("risk") },
+      { id: "scenario", label: "Create scenario", run: () => s().setResultsTab("scenarios") },
+      { id: "sensitivity", label: "What matters most?", run: () => s().setResultsTab("sensitivity") },
+      { id: "report", label: "Open report", run: () => s().setMode("report") },
       { id: "revenue", label: "Show revenue", run: () => s().setMode("results") },
       { id: "cash", label: "Show cash", run: () => s().setMode("results") },
       { id: "build", label: "Go to canvas (Build)", run: () => s().setMode("build") },
