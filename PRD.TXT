@@ -1,0 +1,3973 @@
+# BUILD A VISUAL FINANCIAL SIMULATOR FOR SOFTWARE STARTUPS
+
+## ROLE
+
+You are acting simultaneously as:
+
+* Principal Product Manager
+* Technical Product Manager
+* CTO
+* Staff Software Engineer
+* Product Designer
+* UX Designer
+* Simulation Engineer
+* Financial Modeling Engineer
+* AI Agent Architect
+* Performance Engineer
+* QA Engineer
+
+You are responsible for designing and implementing a production-quality MVP of a new application.
+
+The product is a **visual financial simulation platform for software startups**.
+
+The core idea is:
+
+> "Build your business model like a workflow. Connect assumptions together. Run the business forward in time. See what happens."
+
+The product should feel closer to **n8n / React Flow / Figma** than traditional financial software.
+
+A user who knows almost nothing about finance should be able to create a useful financial simulation.
+
+An experienced founder or finance operator should eventually be able to build sophisticated models involving:
+
+* revenue
+* customers
+* pricing
+* subscriptions
+* usage
+* credits
+* variable costs
+* fixed costs
+* hiring
+* marketing
+* CAC
+* churn
+* expansion
+* cash
+* runway
+* gross margin
+* contribution margin
+* break-even
+* scenarios
+* sensitivity analysis
+* Monte Carlo simulation
+* capacity constraints
+* operational assumptions
+* probabilistic events
+
+---
+
+# 1. PRODUCT VISION
+
+Build a product that makes financial modeling feel like building an automation workflow.
+
+Traditional financial software:
+
+```text
+Spreadsheet
+↓
+Rows
+↓
+Columns
+↓
+Formulas
+↓
+Hard to understand
+```
+
+Our product:
+
+```text
+Input
+↓
+Growth
+↓
+Conversion
+↓
+Customers
+↓
+Pricing
+↓
+Revenue
+↓
+Costs
+↓
+Profit
+↓
+Cash
+↓
+Runway
+```
+
+The user should be able to visually understand how one assumption affects another.
+
+The product must answer questions such as:
+
+* What happens if our users grow 20% every month?
+* What happens if conversion falls from 7% to 4%?
+* What happens if churn increases by 2 percentage points?
+* How much cash will we have in 12 months?
+* When do we become profitable?
+* How many customers do we need to break even?
+* What happens if we hire 5 engineers?
+* What happens if AI costs increase by 50%?
+* How much can we spend on marketing?
+* Which assumption has the biggest impact on the business?
+* What is the probability that we run out of cash?
+* What is our expected MRR in month 24?
+* What does our downside case look like?
+* What is the difference between our base, upside and downside cases?
+
+The product should turn these questions into models and simulations.
+
+---
+
+# 2. PRODUCT PRINCIPLE
+
+The application should follow one fundamental principle:
+
+> NEVER HIDE THE LOGIC.
+
+Every important output must be traceable back to its assumptions.
+
+If the dashboard says:
+
+```text
+Month 24 MRR = $1.8M
+```
+
+the user should be able to click it and see:
+
+```text
+MRR
+↓
+Customers × ARPU
+
+Customers
+↓
+Starting customers
++ New customers
+- Churned customers
++ Expansion customers
+
+New customers
+↓
+Signups × Conversion rate
+
+Signups
+↓
+Starting signups × Growth rate
+```
+
+The user must always be able to answer:
+
+> "Why did this number happen?"
+
+---
+
+# 3. TARGET USERS
+
+Primary users:
+
+### Persona 1 — Founder
+
+Knows the business but does not understand financial modeling deeply.
+
+Needs:
+
+* simplicity
+* guided setup
+* plain English
+* templates
+* scenario comparison
+* runway visibility
+
+### Persona 2 — Product Manager
+
+Wants to understand the financial impact of product decisions.
+
+Examples:
+
+* launching a free tier
+* increasing pricing
+* changing usage limits
+* adding AI features
+
+### Persona 3 — Startup Operator
+
+Needs:
+
+* detailed assumptions
+* operating model
+* headcount
+* costs
+* cash
+* forecasts
+
+### Persona 4 — Finance professional
+
+Needs:
+
+* formulas
+* model transparency
+* scenario comparison
+* exports
+* reproducibility
+* audit trail
+
+---
+
+# 4. CORE UX PROMISE
+
+The entire product should be understandable through this sentence:
+
+> "Tell us how your business works. We'll turn it into a simulation."
+
+A new user should be able to:
+
+1. Create a model.
+2. Add assumptions.
+3. Connect them.
+4. Run the simulation.
+5. See the result.
+6. Change one assumption.
+7. Immediately understand what changed.
+
+---
+
+# 5. PRIMARY EXPERIENCE
+
+The primary screen is a visual canvas.
+
+Think:
+
+```text
+n8n
++
+Figma
++
+financial dashboard
+```
+
+The screen should contain:
+
+```text
+┌───────────────────────────────────────────────────────────────┐
+│ Logo     Model Name       Run Simulation     Share   Export  │
+├──────────────┬───────────────────────────────────┬────────────┤
+│              │                                   │            │
+│ NODE         │                                   │ PROPERTIES │
+│ LIBRARY      │            CANVAS                 │            │
+│              │                                   │            │
+│ Acquisition  │       ┌─────────────┐             │ Selected   │
+│ Revenue      │       │   Signups   │             │ Node       │
+│ Customers    │──────►│   800/mo    │──────┐      │            │
+│ Costs        │       └─────────────┘      │      │ Growth     │
+│ Pricing      │                            ▼      │ 20%         │
+│ Simulation   │                       ┌─────────┐ │            │
+│              │                       │ Growth  │ │              │
+│              │                       │ 20%     │ │              │
+│              │                       └────┬────┘ │              │
+│              │                            ▼       │              │
+│              │                        Customers   │              │
+│              │                                   │              │
+├──────────────┴───────────────────────────────────┴────────────┤
+│ MRR $185K │ GM 60% │ Cash $1.2M │ Runway 14 mo │ Risk Low   │
+└───────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 6. DESIGN PHILOSOPHY
+
+Do NOT make the application look like traditional accounting software.
+
+Avoid:
+
+* dense spreadsheet aesthetics
+* excessive tables
+* tiny text
+* too many numbers
+* excessive borders
+* overly complex menus
+* dark enterprise software aesthetics
+* financial jargon everywhere
+
+The interface should feel:
+
+* modern
+* calm
+* technical
+* trustworthy
+* analytical
+* approachable
+
+It should feel like a serious developer/productivity tool.
+
+---
+
+# 7. DESIGN SYSTEM
+
+Use **Material UI v7** as the primary component system.
+
+Use:
+
+* MUI
+* MUI icons
+* MUI Data Grid only where appropriate
+* MUI Charts if useful
+* React Flow for the node canvas
+
+MUI's official Next.js integration should be followed rather than inventing a custom integration.
+
+Use Roboto as the default UI font.
+
+For data-heavy numeric displays, use:
+
+```text
+Roboto
+```
+
+with tabular numeric styling where possible.
+
+Potential hierarchy:
+
+```text
+H1: 28–32px
+H2: 22–24px
+H3: 18px
+Body: 14–16px
+Secondary: 12–14px
+Metric: 24–36px
+```
+
+Do not use huge marketing typography inside the application.
+
+---
+
+# 8. COLOR SYSTEM
+
+Use a mostly neutral interface.
+
+Base:
+
+```text
+Background: #F8FAFC
+Surface: #FFFFFF
+Primary text: #111827
+Secondary text: #64748B
+Border: #E2E8F0
+```
+
+Primary brand color:
+
+```text
+Indigo / Blue
+```
+
+Use semantic colors:
+
+```text
+Green = healthy / positive
+Amber = warning
+Red = risk
+Blue = information
+Purple = simulation / AI
+```
+
+Do NOT make every node colorful.
+
+Node colors should primarily communicate node category.
+
+Suggested:
+
+```text
+Inputs       → blue
+Customers    → purple
+Revenue      → green
+Costs        → orange
+Resources    → cyan
+Logic        → gray
+Simulation   → violet
+Warnings     → amber/red
+```
+
+Use color sparingly.
+
+---
+
+# 9. RESPONSIVE DESIGN
+
+Desktop is the primary experience.
+
+Minimum supported desktop:
+
+```text
+1280px+
+```
+
+Tablet:
+
+```text
+1024px+
+```
+
+Mobile does NOT need to support full model editing in V1.
+
+Mobile should support:
+
+* dashboard
+* simulation results
+* reports
+* assumptions
+* scenario comparison
+
+Do not attempt to squeeze the entire canvas onto a phone.
+
+---
+
+# 10. CORE CONCEPTS
+
+The simulation engine must distinguish between:
+
+## STOCK
+
+Something that accumulates.
+
+Examples:
+
+* cash
+* customers
+* credits
+* deferred revenue
+* employees
+
+## FLOW
+
+Something that happens during a period.
+
+Examples:
+
+* new customers this month
+* revenue this month
+* marketing spend
+* credit burn
+
+## RATE
+
+How quickly something changes.
+
+Examples:
+
+* growth rate
+* churn rate
+* conversion rate
+* cost per unit
+
+## CAPACITY
+
+A maximum amount that can be handled.
+
+Examples:
+
+* servers
+* guardians
+* sales capacity
+* support capacity
+
+## ASSUMPTION
+
+A value controlled by the user.
+
+Examples:
+
+```text
+Growth = 20%
+Conversion = 7%
+Price = $39
+Churn = 5%
+```
+
+## OUTPUT
+
+A calculated result.
+
+Examples:
+
+```text
+MRR
+ARR
+Gross Margin
+Cash
+Runway
+Customers
+```
+
+---
+
+# 11. NODE SYSTEM
+
+Build a generic node architecture.
+
+Every node should have:
+
+```typescript
+type NodeDefinition = {
+  id: string;
+  type: NodeType;
+  label: string;
+  description: string;
+  category: NodeCategory;
+
+  inputs: PortDefinition[];
+  outputs: PortDefinition[];
+
+  parameters: ParameterDefinition[];
+
+  formula?: FormulaDefinition;
+
+  state?: StateDefinition;
+
+  metadata?: {
+    source?: "user" | "template" | "ai";
+    confidence?: number;
+    tags?: string[];
+  };
+};
+```
+
+---
+
+# 12. NODE CATEGORIES
+
+## A. INPUT NODES
+
+### Input
+
+Purpose:
+
+Represent a user-controlled assumption.
+
+Fields:
+
+```text
+Name
+Value
+Unit
+Minimum
+Maximum
+Distribution
+Source
+Description
+```
+
+Examples:
+
+```text
+Monthly Signups
+800
+users/month
+```
+
+or:
+
+```text
+Monthly Growth
+20%
+percent/month
+```
+
+---
+
+## Growth
+
+Fields:
+
+```text
+Growth rate
+Growth type
+Start month
+End month
+```
+
+Growth types:
+
+* fixed percentage
+* absolute growth
+* compounded growth
+* linear growth
+* custom curve
+* seasonal
+
+---
+
+## Distribution
+
+Represents uncertainty.
+
+Types:
+
+* fixed
+* uniform
+* normal
+* triangular
+* log-normal
+* custom
+
+Beginner UI:
+
+```text
+Best case
+Most likely
+Worst case
+```
+
+Advanced UI exposes actual distribution settings.
+
+---
+
+# 13. CUSTOMER NODES
+
+## Acquisition
+
+Represents customers/users entering the system.
+
+Parameters:
+
+```text
+Starting volume
+Growth
+Acquisition channel
+CAC
+Marketing budget
+Organic percentage
+```
+
+Possible formulas:
+
+```text
+Customers acquired =
+Marketing spend / CAC
+```
+
+and:
+
+```text
+Organic customers =
+Traffic × Organic conversion
+```
+
+---
+
+## Conversion
+
+Inputs:
+
+```text
+Potential users
+Conversion rate
+```
+
+Output:
+
+```text
+Converted customers
+```
+
+Formula:
+
+```text
+converted = input × conversion_rate
+```
+
+---
+
+## Churn
+
+Parameters:
+
+```text
+Monthly churn
+Annual churn
+Segment-specific churn
+```
+
+Formula:
+
+```text
+churned_customers =
+starting_customers × churn_rate
+```
+
+---
+
+## Upgrade / Downgrade
+
+Allows movement between plans.
+
+Parameters:
+
+```text
+Upgrade probability
+Downgrade probability
+```
+
+---
+
+## Customer Split
+
+Split customers across plans.
+
+Example:
+
+```text
+Prime     78%
+Studio    17%
+World      4%
+Dedicated  1%
+```
+
+Validate:
+
+```text
+sum(weights) = 100%
+```
+
+---
+
+# 14. REVENUE NODES
+
+## Price
+
+Fields:
+
+```text
+Price
+Currency
+Billing period
+Discount
+Annual discount
+```
+
+---
+
+## Subscription Revenue
+
+Formula:
+
+```text
+customers × price
+```
+
+Support:
+
+* monthly
+* annual
+* usage-based
+* hybrid
+
+---
+
+## Usage Revenue
+
+Formula:
+
+```text
+units consumed × price per unit
+```
+
+---
+
+## Top-Up Revenue
+
+For credit systems:
+
+```text
+credits purchased × price per credit
+```
+
+---
+
+## Revenue Recognition
+
+Critical distinction:
+
+```text
+Cash received
+≠
+Revenue recognized
+```
+
+Support deferred revenue.
+
+---
+
+# 15. COST NODES
+
+## Fixed Cost
+
+Fields:
+
+```text
+Monthly cost
+Start date
+End date
+Growth
+Category
+```
+
+Examples:
+
+* salaries
+* rent
+* software
+* legal
+* accounting
+* insurance
+
+---
+
+## Variable Cost
+
+Fields:
+
+```text
+Cost per unit
+Unit
+Volume
+```
+
+Formula:
+
+```text
+volume × cost_per_unit
+```
+
+---
+
+## Percentage Cost
+
+Examples:
+
+```text
+Payment processor = 2.9%
+```
+
+Formula:
+
+```text
+revenue × percentage
+```
+
+---
+
+## Step Cost
+
+Important for infrastructure.
+
+Example:
+
+```text
+0–1,000 users → $500
+1,001–5,000 → $1,000
+5,001–10,000 → $2,000
+```
+
+---
+
+# 16. RESOURCE NODES
+
+## Pool
+
+Represents a stock.
+
+Examples:
+
+```text
+Cash
+Credits
+Customers
+Capacity
+```
+
+Properties:
+
+```text
+Initial balance
+Minimum
+Maximum
+```
+
+---
+
+## Burn
+
+Consumes a resource.
+
+Example:
+
+```text
+Credits
+ ↓
+Burn
+ ↓
+AI usage
+```
+
+---
+
+## Capacity
+
+Represents maximum throughput.
+
+Example:
+
+```text
+Guardian capacity = 120 accounts
+```
+
+If demand exceeds capacity:
+
+```text
+Capacity exceeded
+↓
+Cost increase
+OR
+Latency
+OR
+Churn
+```
+
+---
+
+# 17. LOGIC NODES
+
+## Condition
+
+Example:
+
+```text
+IF
+Burn depth > 95%
+THEN
+increase churn probability
+```
+
+---
+
+## Trigger
+
+Perform an action when a condition becomes true.
+
+---
+
+## Split
+
+Probabilistic branching.
+
+---
+
+## Formula
+
+Advanced node.
+
+Allow users to define:
+
+```text
+Revenue = Customers × ARPU
+```
+
+Do NOT allow arbitrary JavaScript execution.
+
+Use a sandboxed formula language.
+
+---
+
+# 18. TIME ENGINE
+
+The engine must support:
+
+```text
+daily
+weekly
+monthly
+quarterly
+yearly
+```
+
+Default:
+
+```text
+monthly
+```
+
+Simulation settings:
+
+```text
+Start date
+Time step
+Horizon
+```
+
+Example:
+
+```text
+Start: January 2027
+Step: 1 month
+Horizon: 24 months
+```
+
+---
+
+# 19. SIMULATION ENGINE
+
+The engine must be deterministic when given:
+
+```text
+model
+parameters
+seed
+```
+
+Same inputs + same seed must produce the same output.
+
+This is essential for debugging and reproducibility.
+
+Simulation:
+
+```text
+initialize state
+
+for each timestep:
+
+    resolve inputs
+
+    resolve flows
+
+    resolve formulas
+
+    update stocks
+
+    apply conditions
+
+    calculate financial statements
+
+    calculate metrics
+
+    record state
+```
+
+Do not tie the simulation engine to React.
+
+The simulation engine must be pure TypeScript.
+
+It must be runnable:
+
+* in browser
+* server-side
+* tests
+* CLI
+* Web Worker
+
+---
+
+# 20. MONTE CARLO ENGINE
+
+Monte Carlo should be a first-class feature.
+
+User chooses:
+
+```text
+Runs:
+100
+500
+1,000
+5,000
+10,000
+```
+
+Default:
+
+```text
+1,000
+```
+
+Each run samples uncertain parameters.
+
+Example:
+
+```text
+Growth:
+10–30%
+
+Conversion:
+5–9%
+
+Churn:
+3–7%
+```
+
+Output:
+
+```text
+P10
+P25
+P50
+P75
+P90
+Mean
+Min
+Max
+```
+
+Also calculate:
+
+```text
+Probability of bankruptcy
+Probability of profitability
+Probability of reaching target MRR
+Probability of reaching target cash
+Probability of violating guardrails
+```
+
+---
+
+# 21. DO NOT FREEZE THE UI
+
+Monte Carlo simulations must not block the main UI thread.
+
+For browser simulations:
+
+```text
+Web Worker
+```
+
+should perform heavy simulations.
+
+UI receives progress:
+
+```text
+Running simulation...
+
+342 / 1,000
+```
+
+Then:
+
+```text
+Simulation complete
+1,000 runs
+```
+
+For large simulations, support chunked execution.
+
+---
+
+# 22. SENSITIVITY ANALYSIS
+
+The simulator should identify which assumptions have the largest effect on outputs.
+
+Example:
+
+```text
+Impact on Month 24 MRR
+
+Growth             ███████████████
+Conversion         ███████████
+Churn              █████████
+ARPU               ███████
+CAC                █████
+Hosting cost       ███
+```
+
+Call this:
+
+> **What matters most?**
+
+This is extremely important for beginner users.
+
+---
+
+# 23. SCENARIOS
+
+Users can duplicate a model into scenarios.
+
+Default:
+
+```text
+Base Case
+Upside
+Downside
+```
+
+Users can create:
+
+```text
+Pricing +20%
+Hiring 5 engineers
+Marketing increase
+AI cost shock
+Free tier expansion
+```
+
+Scenario architecture:
+
+```text
+Base Model
+    │
+    ├── Base
+    ├── Upside
+    ├── Downside
+    └── Custom Scenario
+```
+
+Scenarios should use **overrides**, not duplicate the entire model.
+
+---
+
+# 24. ACTUALS VS FORECAST
+
+Eventually support:
+
+```text
+Actual
+Forecast
+```
+
+Timeline:
+
+```text
+Jan   Feb   Mar   Apr   May   Jun   Jul...
+ A     A     A     A     F     F     F
+```
+
+Where:
+
+```text
+A = actual
+F = forecast
+```
+
+This allows the simulator to become a living financial model rather than a one-time calculator.
+
+---
+
+# 25. COMPANY STAGE
+
+The product must understand company stage.
+
+Stages:
+
+```text
+Idea
+Pre-launch
+Pre-seed
+Seed
+Early growth
+Scale
+```
+
+Each stage should influence recommended assumptions and dashboard metrics.
+
+Example:
+
+### Pre-seed
+
+Prioritize:
+
+* cash
+* burn
+* runway
+* product development
+* customer validation
+
+### Seed
+
+Prioritize:
+
+* MRR
+* growth
+* retention
+* CAC
+* gross margin
+* runway
+
+### Growth
+
+Prioritize:
+
+* NRR
+* contribution margin
+* CAC payback
+* hiring
+* operating leverage
+
+Do not hardcode financial truth based purely on stage. Stage is a contextual layer.
+
+---
+
+# 26. BUSINESS TYPE TEMPLATES
+
+Provide templates.
+
+Initial templates:
+
+```text
+SaaS subscription
+AI SaaS
+Usage-based SaaS
+Credit-based AI product
+Marketplace
+API business
+Mobile subscription
+Agency
+B2B SaaS
+Consumer app
+```
+
+First template should be:
+
+> AI SaaS + Subscription + Credits
+
+---
+
+# 27. AI AGENT
+
+The application must have an AI copilot.
+
+The user should be able to type:
+
+> "Create a financial model for an AI SaaS. We have 2,000 visitors per month, 5% conversion, $49 pricing, 4% monthly churn and $12 average monthly COGS per customer."
+
+The AI must NOT simply reply with text.
+
+It must create a structured model.
+
+Architecture:
+
+```text
+User Prompt
+     ↓
+AI Agent
+     ↓
+Intent extraction
+     ↓
+Business entities
+     ↓
+Assumptions
+     ↓
+Node graph
+     ↓
+Validation
+     ↓
+Simulation
+     ↓
+Results
+```
+
+---
+
+# 28. AI MUST USE STRUCTURED OUTPUTS
+
+Never allow the AI to directly generate executable code.
+
+The AI must produce a schema such as:
+
+```json
+{
+  "model": {
+    "name": "AI SaaS Model",
+    "nodes": [],
+    "connections": [],
+    "assumptions": [],
+    "scenarios": []
+  }
+}
+```
+
+Validate it with Zod before applying it.
+
+If validation fails:
+
+```text
+AI output
+↓
+Zod validation
+↓
+Error
+↓
+Repair agent
+↓
+Validate again
+```
+
+Maximum repair attempts:
+
+```text
+3
+```
+
+---
+
+# 29. AI TOOL SYSTEM
+
+The AI agent should have tools such as:
+
+```text
+create_node
+update_node
+delete_node
+connect_nodes
+disconnect_nodes
+
+get_model
+get_node
+get_connections
+
+create_scenario
+update_assumption
+
+validate_model
+
+run_simulation
+run_monte_carlo
+
+get_metric
+get_timeline
+
+explain_metric
+find_bottleneck
+run_sensitivity_analysis
+```
+
+The AI should be able to say:
+
+> "I created the model, but your assumptions are missing payment fees. I used 0% temporarily. Add a payment fee?"
+
+Never silently invent important assumptions.
+
+---
+
+# 30. AI ASSUMPTION HANDLING
+
+Every AI-created assumption must have metadata:
+
+```text
+Source:
+User provided
+AI inferred
+Template
+Market benchmark
+Imported actual
+```
+
+Also:
+
+```text
+Confidence:
+High
+Medium
+Low
+```
+
+For example:
+
+```text
+Monthly churn
+5%
+
+Source:
+User provided
+
+Confidence:
+High
+```
+
+Or:
+
+```text
+Payment processing fee
+2.9%
+
+Source:
+AI suggested
+
+Confidence:
+Low
+```
+
+The user must be able to approve/reject AI assumptions.
+
+---
+
+# 31. OLLAMA SUPPORT
+
+The AI layer must support local Ollama.
+
+Ollama exposes an OpenAI-compatible API and supports streaming, tools/function calling and structured outputs.
+
+Build a provider abstraction:
+
+```typescript
+interface LLMProvider {
+  chat(...)
+  stream(...)
+  structured(...)
+  tools(...)
+}
+```
+
+Initial provider:
+
+```text
+Ollama
+```
+
+Configuration:
+
+```text
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gpt-oss:20b
+```
+
+Do not hardcode a model.
+
+Allow the user to choose from installed Ollama models.
+
+---
+
+# 32. IMPORTANT OLLAMA SECURITY RULE
+
+A deployed Vercel application cannot directly assume that a user's browser can access:
+
+```text
+localhost:11434
+```
+
+Therefore implement two modes.
+
+### Local mode
+
+Application running locally:
+
+```text
+Browser
+↓
+localhost
+↓
+Ollama
+```
+
+### Cloud mode
+
+```text
+Browser
+↓
+Vercel
+↓
+Cloud LLM provider
+```
+
+For V1, Cloud LLM support can be disabled.
+
+But the architecture must make providers pluggable.
+
+Never expose API keys in browser code.
+
+---
+
+# 33. AI MODEL BUILDER WORKFLOW
+
+The best AI experience should support:
+
+```text
+Create model from prompt
+```
+
+Example:
+
+> "I run a $39/month AI SaaS. We have 1,000 visitors per month, 7% conversion, 5% churn and $8 COGS per customer. Growth is 15% monthly."
+
+AI responds:
+
+```text
+I can build this.
+
+I found:
+
+Revenue
+$39/customer/month
+
+Conversion
+7%
+
+Churn
+5%
+
+COGS
+$8/customer/month
+
+Growth
+15%/month
+
+I need one assumption:
+Should the 1,000 visitors grow by 15% monthly?
+
+[Yes, build it] [Edit assumption]
+```
+
+Then builds the graph.
+
+---
+
+# 34. AI SHOULD EXPLAIN THE MODEL
+
+After creation:
+
+```text
+Your model has 18 nodes.
+
+The business works like this:
+
+Traffic
+→ Conversion
+→ Customers
+→ Subscription revenue
+
+Customers
+→ Churn
+→ Customer loss
+
+Customers
+→ COGS
+
+Revenue - COGS
+→ Gross profit
+
+Gross profit - Operating costs
+→ Cash
+```
+
+This is the user's first education moment.
+
+---
+
+# 35. DASHBOARD
+
+After simulation, automatically open:
+
+> **Simulation Results**
+
+Top KPI cards:
+
+```text
+MRR
+ARR
+Customers
+Gross Margin
+Cash
+Monthly Burn
+Runway
+Break-even Month
+```
+
+---
+
+# 36. TIMELINE REPORT
+
+This is a critical requirement.
+
+The simulator must generate a report for EVERY timestep.
+
+For monthly simulation:
+
+```text
+Month 1
+Month 2
+Month 3
+...
+Month 24
+```
+
+User can click any month.
+
+Example:
+
+```text
+MONTH 12
+
+Revenue              $185,720
+COGS                  $73,819
+Gross Profit         $111,901
+Gross Margin             60%
+
+Customers              4,820
+New Customers            340
+Churned Customers          82
+
+Cash                  $1.24M
+Monthly Burn           $85K
+
+Break-even:
+Month 9
+```
+
+---
+
+# 37. TIMELINE DETAIL
+
+Clicking Month 12 should show:
+
+### Revenue
+
+```text
+Subscriptions
+Top-ups
+Usage
+Other
+```
+
+### Costs
+
+```text
+AI
+Hosting
+Payment fees
+Salaries
+Marketing
+Other
+```
+
+### Customer movement
+
+```text
+Starting customers
+New customers
+Upgrades
+Downgrades
+Churn
+Ending customers
+```
+
+### Key events
+
+```text
+Reached break-even
+Capacity exceeded
+Margin warning
+Cash warning
+```
+
+---
+
+# 38. REPORT TYPES
+
+Generate:
+
+### Executive Summary
+
+Plain English.
+
+Example:
+
+> "The model reaches $185K MRR by month 12. Gross margin stabilizes around 60%. Cash remains positive throughout the base scenario. The largest driver of month-24 revenue is user growth."
+
+### Financial Report
+
+Detailed.
+
+### Assumption Report
+
+Every assumption and its source.
+
+### Risk Report
+
+Potential failure points.
+
+### Scenario Report
+
+Base vs upside vs downside.
+
+### Monte Carlo Report
+
+P10 / P50 / P90.
+
+---
+
+# 39. DASHBOARD CHARTS
+
+Required:
+
+## MRR
+
+Stacked:
+
+```text
+Subscription
+Usage
+Top-ups
+Other
+```
+
+## Revenue vs COGS
+
+## Gross Margin %
+
+## Customer Growth
+
+## Cash Balance
+
+## Monthly Burn
+
+## Runway
+
+## Break-even
+
+## CAC
+
+## LTV
+
+## NRR
+
+## Contribution Margin
+
+## Burn Depth
+
+## Monte Carlo Distribution
+
+Example:
+
+```text
+Month 24 MRR
+
+P10  $900K
+P50  $1.8M
+P90  $3.4M
+```
+
+---
+
+# 40. MONTE CARLO DASHBOARD
+
+Create a dedicated tab:
+
+> Risk & Uncertainty
+
+Show:
+
+```text
+1,000 simulations
+
+Probability of profitability:
+72%
+
+Probability of cash-out:
+8%
+
+P10 MRR:
+$820K
+
+P50 MRR:
+$1.8M
+
+P90 MRR:
+$3.4M
+```
+
+Also show a histogram.
+
+---
+
+# 41. GUARDRAILS
+
+Users should be able to define guardrails.
+
+Example:
+
+```text
+Gross margin > 55%
+Runway > 6 months
+Churn < 8%
+CAC payback < 12 months
+Cash > $0
+```
+
+The simulator checks them continuously.
+
+Timeline:
+
+```text
+Month 1 ✓
+Month 2 ✓
+Month 3 ✓
+Month 4 ⚠
+Month 5 ⚠
+Month 6 ✓
+```
+
+Click warning:
+
+> "Gross margin fell below 55% because AI usage increased faster than revenue."
+
+---
+
+# 42. MODEL VALIDATION
+
+Before simulation:
+
+```text
+VALIDATION
+
+✓ All nodes connected
+✓ No circular dependency
+✓ All required inputs defined
+✓ Currency consistent
+✓ Time units consistent
+✓ Percentages valid
+✓ Probabilities sum to 100%
+✓ No negative prices
+✓ No invalid formulas
+```
+
+If invalid:
+
+```text
+Simulation blocked
+
+3 issues found
+```
+
+Never run an invalid model silently.
+
+---
+
+# 43. CIRCULAR DEPENDENCIES
+
+The model engine must detect:
+
+```text
+A → B → C → A
+```
+
+If the model contains a cycle that is not explicitly supported:
+
+```text
+Circular dependency detected.
+
+A → B → C → A
+```
+
+Provide a visual highlight.
+
+Later support legitimate feedback loops through explicit state/delay nodes.
+
+---
+
+# 44. MODEL VERSIONING
+
+Every model should be versioned.
+
+Example:
+
+```text
+Model v1
+Model v2
+Model v3
+```
+
+Store:
+
+```text
+Graph
+Parameters
+Scenarios
+Simulation settings
+Seed
+Results metadata
+```
+
+A simulation result must always be reproducible.
+
+---
+
+# 45. AUDITABILITY
+
+Every result should have:
+
+```text
+Formula
+Inputs
+Source
+Timestamp
+Model version
+Simulation seed
+```
+
+Example:
+
+```text
+Month 12 MRR
+
+$185,720
+
+Formula:
+Prime customers × Prime price
++
+Studio customers × Studio price
++
+World customers × World price
+
+Model version:
+v1.4
+
+Simulation seed:
+928173
+```
+
+---
+
+# 46. DATA MODEL
+
+Use TypeScript types.
+
+Core entities:
+
+```text
+User
+Workspace
+Model
+Node
+Connection
+Parameter
+Scenario
+SimulationRun
+SimulationResult
+Metric
+Report
+Template
+AIConversation
+```
+
+Suggested relational structure:
+
+```text
+users
+workspaces
+models
+model_versions
+nodes
+connections
+parameters
+scenarios
+simulation_runs
+simulation_results
+reports
+templates
+ai_sessions
+```
+
+---
+
+# 47. DATABASE
+
+For V1:
+
+Use:
+
+```text
+PostgreSQL
+```
+
+Prefer:
+
+```text
+Supabase
+```
+
+if authentication/database infrastructure is required.
+
+However, the core simulation engine must not depend on PostgreSQL.
+
+The engine should be a pure package.
+
+---
+
+# 48. ARCHITECTURE
+
+Recommended:
+
+```text
+Next.js
+TypeScript
+React
+Material UI
+React Flow
+Zustand
+Zod
+Decimal.js
+Web Workers
+PostgreSQL/Supabase
+```
+
+Architecture:
+
+```text
+/apps/web
+
+/packages/
+    simulation-engine
+    model-schema
+    formula-engine
+    monte-carlo
+    charts
+    ai
+    ui
+    shared-types
+```
+
+The simulation engine should be reusable independently from the UI.
+
+---
+
+# 49. NEXT.JS
+
+Use:
+
+```text
+Next.js App Router
+TypeScript
+```
+
+Prefer Server Components where possible.
+
+Use Client Components only where interactivity is required:
+
+* canvas
+* node editor
+* sliders
+* charts
+* simulation controls
+* AI chat
+
+MUI's App Router integration should use the official cache provider approach.
+
+---
+
+# 50. NODE CANVAS
+
+Use:
+
+```text
+@xyflow/react
+```
+
+React Flow provides node dragging, zooming, panning, selection, custom nodes and related editor primitives.
+
+Implement:
+
+* zoom
+* pan
+* minimap
+* selection
+* multi-select
+* keyboard shortcuts
+* snap-to-grid
+* alignment
+* grouping
+* copy/paste
+* undo/redo
+* auto-layout
+* edge creation
+* node deletion
+* node duplication
+
+---
+
+# 51. STATE MANAGEMENT
+
+Use Zustand.
+
+Store:
+
+```text
+current model
+selected node
+selected connection
+canvas viewport
+simulation status
+simulation results
+active scenario
+AI state
+```
+
+Do not put large simulation results into React component state unnecessarily.
+
+---
+
+# 52. PERFORMANCE
+
+The product must feel fast.
+
+Goals:
+
+```text
+Canvas interaction:
+<16ms target for normal interactions
+
+Model changes:
+instant
+
+Single 24-month simulation:
+<100ms for simple models
+
+1,000 Monte Carlo runs:
+non-blocking
+
+UI:
+no frozen interface
+```
+
+Use:
+
+* Web Workers
+* memoized nodes
+* virtualization where appropriate
+* incremental recalculation
+* dependency graphs
+* topological execution
+* cached calculations
+
+Do not recalculate the entire model when one unrelated node changes.
+
+---
+
+# 53. INCREMENTAL SIMULATION
+
+Build dependency tracking.
+
+If:
+
+```text
+Growth
+ ↓
+Signups
+ ↓
+Customers
+ ↓
+Revenue
+```
+
+changes:
+
+Only recalculate downstream dependencies.
+
+Do not recalculate unrelated:
+
+```text
+Office Rent
+```
+
+---
+
+# 54. FORMULA ENGINE
+
+Do not use `eval`.
+
+Do not execute arbitrary JavaScript from user input.
+
+Implement a safe expression parser.
+
+Supported operations initially:
+
+```text
++
+-
+*
+/
+%
+()
+min()
+max()
+average()
+if()
+abs()
+round()
+sqrt()
+```
+
+Later:
+
+```text
+previous()
+lag()
+growth()
+sum()
+```
+
+---
+
+# 55. CURRENCY PRECISION
+
+Never use JavaScript floating-point arithmetic for money calculations where precision matters.
+
+Use a decimal arithmetic library such as Decimal.js.
+
+Store money values consistently.
+
+Internally prefer:
+
+```text
+decimal
+```
+
+rather than:
+
+```text
+float
+```
+
+---
+
+# 56. EXPORT
+
+Allow:
+
+```text
+CSV
+JSON
+PDF
+Excel
+```
+
+V1 can prioritize:
+
+```text
+CSV
+JSON
+PDF
+```
+
+Export:
+
+* assumptions
+* model graph
+* timeline
+* KPIs
+* scenario results
+* Monte Carlo statistics
+
+---
+
+# 57. SHARING
+
+Users should eventually be able to share:
+
+```text
+View-only simulation
+```
+
+with a URL.
+
+Later:
+
+```text
+Collaborative editing
+```
+
+Do not build real-time collaboration in V1 unless required.
+
+---
+
+# 58. TEMPLATE SYSTEM
+
+Templates must be stored as model JSON.
+
+Example:
+
+```json
+{
+  "template": "ai-saas",
+  "version": "1.0",
+  "nodes": [],
+  "connections": [],
+  "parameters": []
+}
+```
+
+Templates must be editable.
+
+---
+
+# 59. FIRST-TIME USER EXPERIENCE
+
+When user opens the app:
+
+```text
+What do you want to do?
+
+[ Build from scratch ]
+
+[ Start with a template ]
+
+[ Describe my business with AI ]
+```
+
+Recommended:
+
+```text
+Describe my business with AI
+```
+
+Then:
+
+> "Tell me about your business."
+
+User:
+
+> "I run an AI SaaS that charges $39/month."
+
+AI asks only the most important missing questions.
+
+---
+
+# 60. GUIDED MODEL BUILDER
+
+Do not ask 50 questions.
+
+Use progressive disclosure.
+
+Step 1:
+
+```text
+What do you sell?
+```
+
+Step 2:
+
+```text
+How do customers pay?
+```
+
+Step 3:
+
+```text
+How do customers arrive?
+```
+
+Step 4:
+
+```text
+What does it cost to serve them?
+```
+
+Step 5:
+
+```text
+What are your fixed costs?
+```
+
+Step 6:
+
+```text
+How fast are you growing?
+```
+
+Then create the model.
+
+---
+
+# 61. ASSUMPTION PANEL
+
+When a node is selected:
+
+```text
+┌────────────────────────────┐
+│ Monthly Growth             │
+│                            │
+│ Value                      │
+│ [ 20 ] %                   │
+│                            │
+│ Uncertainty                │
+│ [ Low ▼ ]                  │
+│                            │
+│ Source                     │
+│ [ User assumption ▼ ]      │
+│                            │
+│ Advanced                   │
+│ Distribution               │
+│ Minimum                    │
+│ Maximum                    │
+└────────────────────────────┘
+```
+
+The panel should be extremely simple by default.
+
+---
+
+# 62. AI EXPLANATION MODE
+
+Every node should have:
+
+> Explain this
+
+The AI explains in plain English.
+
+Example:
+
+> "Churn is the percentage of customers who leave each month. At 5% monthly churn, approximately 5 out of every 100 customers are expected to leave each month."
+
+This turns the application into a financial learning environment.
+
+---
+
+# 63. "WHAT CHANGED?" FEATURE
+
+After changing an assumption:
+
+```text
+Growth
+20% → 15%
+```
+
+show:
+
+```text
+Impact
+
+Month 24 MRR
+$1.8M → $1.2M
+
+Cash
+$1.2M → $620K
+
+Runway
+14 months → 9 months
+```
+
+This should be one of the most important UX features.
+
+---
+
+# 64. "WHY?" FEATURE
+
+Click any metric:
+
+```text
+Why is MRR $1.8M?
+```
+
+Show causal chain:
+
+```text
+MRR
+↓
+Customers
+↓
+Conversion
+↓
+Signups
+↓
+Growth
+```
+
+This is essential for trust.
+
+---
+
+# 65. "WHAT SHOULD I CHANGE?" FEATURE
+
+The AI can analyze the model and say:
+
+```text
+Three assumptions have the largest effect on Month 24 MRR:
+
+1. Monthly growth
+2. Conversion rate
+3. Churn
+
+Changing price has a smaller effect than improving conversion in this model.
+```
+
+Do not make unsupported claims.
+
+The result must be calculated from sensitivity analysis.
+
+---
+
+# 66. CURRENT BUSINESS STAGE
+
+Dashboard should show:
+
+```text
+Business Stage
+
+Seed
+```
+
+And:
+
+```text
+Current State
+
+MRR: $85K
+Growth: 18%
+Customers: 1,840
+Gross Margin: 61%
+Cash: $1.4M
+Runway: 16 months
+```
+
+This is the "where am I now?" section.
+
+---
+
+# 67. FORECAST
+
+Separate:
+
+```text
+TODAY
+```
+
+from:
+
+```text
+FORECAST
+```
+
+Timeline:
+
+```text
+Actuals ─────────── Forecast ──────────────►
+
+Jan Feb Mar Apr | May Jun Jul Aug Sep...
+```
+
+Use a visual divider.
+
+---
+
+# 68. SIMULATION REPORT
+
+After every simulation, automatically create:
+
+```text
+Simulation Report
+
+1. Executive summary
+2. Current state
+3. Key assumptions
+4. Revenue forecast
+5. Cost forecast
+6. Profitability
+7. Cash and runway
+8. Customer forecast
+9. Risks
+10. Sensitivity
+11. Scenario comparison
+12. Monte Carlo
+13. Recommendations/questions
+```
+
+The report must be generated from actual simulation outputs.
+
+Never let the AI invent numbers.
+
+---
+
+# 69. AI REPORTING RULE
+
+The AI may explain calculated results.
+
+It must NEVER calculate financial outputs itself if the simulation engine can calculate them.
+
+Correct:
+
+```text
+Engine:
+MRR = $185,720
+
+AI:
+"MRR reaches $185,720 in month 12."
+```
+
+Incorrect:
+
+```text
+AI guesses MRR = $185K
+```
+
+The engine is the source of truth.
+
+---
+
+# 70. SIMULATION RESULT OBJECT
+
+Use a structure similar to:
+
+```typescript
+type SimulationResult = {
+  runId: string;
+  modelVersionId: string;
+  seed: number;
+
+  timeline: TimelinePoint[];
+
+  summary: {
+    mrr: number;
+    arr: number;
+    customers: number;
+    grossMargin: number;
+    cash: number;
+    runwayMonths: number;
+    breakEvenMonth?: number;
+  };
+
+  guardrails: GuardrailResult[];
+
+  distributions?: DistributionResult[];
+
+  events: SimulationEvent[];
+};
+```
+
+---
+
+# 71. TIMELINE OBJECT
+
+```typescript
+type TimelinePoint = {
+  period: string;
+
+  customers: number;
+
+  revenue: {
+    subscription: number;
+    usage: number;
+    topups: number;
+    total: number;
+  };
+
+  costs: {
+    variable: number;
+    fixed: number;
+    marketing: number;
+    payroll: number;
+    infrastructure: number;
+    total: number;
+  };
+
+  profit: {
+    grossProfit: number;
+    grossMargin: number;
+    operatingProfit: number;
+  };
+
+  cash: {
+    opening: number;
+    inflow: number;
+    outflow: number;
+    closing: number;
+  };
+
+  metrics: Record<string, number>;
+};
+```
+
+---
+
+# 72. ERROR HANDLING
+
+Never display:
+
+```text
+NaN
+Infinity
+undefined
+```
+
+Never silently ignore errors.
+
+Examples:
+
+```text
+Conversion rate must be between 0% and 100%.
+```
+
+```text
+Plan mix must total 100%.
+```
+
+```text
+Simulation cannot run because starting cash is missing.
+```
+
+---
+
+# 73. TESTING
+
+The financial engine requires extremely strong tests.
+
+Test:
+
+* revenue
+* churn
+* growth
+* pricing
+* COGS
+* cash
+* runway
+* break-even
+* deferred revenue
+* scenarios
+* distributions
+* Monte Carlo
+* dependency graph
+* circular dependencies
+
+Every financial formula should have unit tests.
+
+Use property-based tests where useful.
+
+---
+
+# 74. ACCEPTANCE TEST
+
+Create this model:
+
+```text
+Starting signups = 800/month
+Growth = 20%
+Conversion = 7%
+Price = $39
+Churn = 5%
+COGS/customer = $8
+Fixed costs = $20,000/month
+Starting cash = $500,000
+```
+
+Run:
+
+```text
+24 months
+```
+
+The engine must produce a complete timeline.
+
+Then change:
+
+```text
+Growth = 10%
+```
+
+The UI must immediately show the impact.
+
+Then run:
+
+```text
+1,000 Monte Carlo simulations
+```
+
+using uncertainty around:
+
+```text
+Growth
+Conversion
+Churn
+COGS
+```
+
+The UI must display:
+
+```text
+P10
+P50
+P90
+```
+
+---
+
+# 75. HERE TEMPLATE
+
+Create HERE as the first sophisticated example.
+
+Business structure:
+
+```text
+Signups
+↓
+Activation
+↓
+Conversion
+↓
+Plan Mix
+↓
+Customers
+```
+
+Plans:
+
+```text
+Signal
+Prime
+Studio
+World
+Dedicated
+```
+
+Credit economy:
+
+```text
+Cash
+↓
+Credit Grant
+↓
+Credit Wallet
+↓
+Credit Burn
+↓
+Revenue Recognition
+```
+
+Cost economy:
+
+```text
+AI tokens
+Guardian
+Hosting
+Storage
+Payment fees
+```
+
+Metrics:
+
+```text
+MRR
+COGS
+Gross Profit
+Gross Margin
+Contribution
+APG
+NRR
+WSCB
+Breakage
+Burn depth
+Cash
+Runway
+```
+
+---
+
+# 76. HERE-SPECIFIC NODE TYPES
+
+Do NOT hardcode HERE-specific logic into the core engine.
+
+Instead create reusable nodes:
+
+```text
+Credit Grant
+Credit Wallet
+Credit Burn
+Breakage
+Usage Cost
+Standing Charge
+Capacity Pool
+Revenue Recognition
+```
+
+HERE becomes a template using those primitives.
+
+---
+
+# 77. BUSINESS MODEL GRAPH
+
+The HERE template should visually resemble:
+
+```text
+                  ┌─────────────┐
+                  │   SIGNUPS   │
+                  └──────┬──────┘
+                         ↓
+                  ┌─────────────┐
+                  │ CONVERSION  │
+                  └──────┬──────┘
+                         ↓
+                  ┌─────────────┐
+                  │ PLAN SPLIT  │
+                  └──────┬──────┘
+                         ↓
+              ┌──────────┼──────────┐
+              ↓          ↓          ↓
+            PRIME      STUDIO      WORLD
+              │          │          │
+              └──────────┼──────────┘
+                         ↓
+                      REVENUE
+                         │
+              ┌──────────┴──────────┐
+              ↓                     ↓
+           COGS                    CASH
+              │
+              ↓
+         GROSS PROFIT
+```
+
+Separate credit flow:
+
+```text
+Customers
+   ↓
+Credits
+   ↓
+Burn
+   ↓
+AI / Hosting
+   ↓
+Revenue Recognition
+```
+
+---
+
+# 78. GUARDRAILS
+
+Implement:
+
+```text
+Gross Margin > 55%
+Runway > 6 months
+Breakage < 8%
+APG > 50
+Rationing < 15%
+Cash > 0
+```
+
+These are configurable, not globally hardcoded.
+
+---
+
+# 79. PERFORMANCE TARGET
+
+The application is intended to run initially on Vercel Hobby.
+
+Therefore:
+
+DO NOT depend on long-running server processes.
+
+Vercel Functions have execution limits, so long-running Monte Carlo jobs must not depend on a single server request. Vercel currently documents a 300-second default maximum on Hobby functions.
+
+Prefer:
+
+```text
+Browser
+↓
+Web Worker
+↓
+Monte Carlo
+```
+
+for many simulations.
+
+For server-side jobs later:
+
+```text
+Queue
+↓
+Worker
+↓
+Stored results
+```
+
+Do not require Redis or a persistent worker for MVP.
+
+---
+
+# 80. VERCEL OPTIMIZATION
+
+The app must be lightweight.
+
+Use:
+
+* Next.js App Router
+* code splitting
+* dynamic imports
+* lazy-loaded charts
+* lazy-loaded canvas
+* Web Workers
+* minimal dependencies
+* tree-shaking
+* compressed assets
+
+Do not load the entire simulation engine into every marketing page.
+
+Marketing site should remain mostly static.
+
+---
+
+# 81. APPLICATION ROUTES
+
+Build:
+
+```text
+/
+```
+
+Landing page.
+
+```text
+/app
+```
+
+Dashboard.
+
+```text
+/app/models
+```
+
+Models.
+
+```text
+/app/models/[id]
+```
+
+Model canvas.
+
+```text
+/app/models/[id]/results
+```
+
+Simulation results.
+
+```text
+/app/models/[id]/reports
+```
+
+Reports.
+
+```text
+/app/templates
+```
+
+Templates.
+
+```text
+/app/settings
+```
+
+Settings.
+
+---
+
+# 82. MAIN MODEL PAGE
+
+The model page has four primary modes:
+
+```text
+Build
+Simulate
+Results
+Report
+```
+
+Top navigation:
+
+```text
+[Build] [Simulate] [Results] [Report]
+```
+
+---
+
+# 83. BUILD MODE
+
+Canvas-focused.
+
+Left:
+
+```text
+Node Library
+```
+
+Center:
+
+```text
+Canvas
+```
+
+Right:
+
+```text
+Properties
+```
+
+Bottom:
+
+```text
+Quick metrics
+```
+
+---
+
+# 84. SIMULATE MODE
+
+Show:
+
+```text
+Simulation Settings
+
+Start:
+Jan 2027
+
+Time step:
+Monthly
+
+Horizon:
+24 months
+
+Runs:
+1,000
+
+Seed:
+Auto
+```
+
+Button:
+
+```text
+RUN SIMULATION
+```
+
+---
+
+# 85. RESULTS MODE
+
+Dashboard.
+
+Cards + charts + timeline.
+
+---
+
+# 86. REPORT MODE
+
+Readable business report.
+
+Support:
+
+```text
+Executive
+Financial
+Risk
+Scenario
+Monte Carlo
+```
+
+---
+
+# 87. COMMAND PALETTE
+
+Add:
+
+```text
+⌘K
+```
+
+Commands:
+
+```text
+Add node
+Run simulation
+Run Monte Carlo
+Create scenario
+Ask AI
+Find assumption
+Show revenue
+Show cash
+Export
+Undo
+Redo
+```
+
+---
+
+# 88. KEYBOARD SHORTCUTS
+
+Support:
+
+```text
+Delete
+Backspace
+Cmd/Ctrl + Z
+Cmd/Ctrl + Shift + Z
+Cmd/Ctrl + C
+Cmd/Ctrl + V
+Cmd/Ctrl + S
+Cmd/Ctrl + K
+Space = pan
+```
+
+---
+
+# 89. EMPTY STATE
+
+Do not show a blank canvas.
+
+Show:
+
+```text
+Build your first business model
+
+Start with:
+
+[ AI SaaS ]
+[ Subscription SaaS ]
+[ Marketplace ]
+[ API Business ]
+
+or
+
+[ Describe my business ]
+```
+
+---
+
+# 90. ONBOARDING
+
+Ask:
+
+```text
+What are you building?
+```
+
+Then:
+
+```text
+How do you make money?
+```
+
+Then:
+
+```text
+What is your current stage?
+```
+
+Then:
+
+```text
+What are your biggest questions?
+```
+
+Example:
+
+```text
+☐ Will I run out of cash?
+☐ How fast can I grow?
+☐ Is my pricing sustainable?
+☐ When will I break even?
+☐ How much can I spend?
+```
+
+Use this information to configure the dashboard.
+
+---
+
+# 91. FINANCIAL EDUCATION
+
+Every financial term should have a tooltip.
+
+Example:
+
+```text
+Gross Margin ⓘ
+```
+
+Tooltip:
+
+> "The percentage of revenue left after the direct costs of delivering your product."
+
+Do not assume financial knowledge.
+
+---
+
+# 92. MODEL HEALTH SCORE
+
+Do NOT create a simplistic "financial health score" that pretends to be objective.
+
+Instead show individual dimensions:
+
+```text
+Cash       Healthy
+Growth     Strong
+Margin     Warning
+Retention  Healthy
+```
+
+Avoid one misleading score.
+
+---
+
+# 93. TRUST
+
+The product is making financial projections.
+
+Therefore clearly distinguish:
+
+```text
+Actual
+Assumption
+Forecast
+Simulation
+AI suggestion
+```
+
+Never present simulated numbers as facts.
+
+---
+
+# 94. SOURCE TAGGING
+
+Every parameter should show:
+
+```text
+User
+Template
+Imported
+AI
+Benchmark
+```
+
+Example:
+
+```text
+Churn
+5%
+
+AI suggested
+Low confidence
+```
+
+---
+
+# 95. MODEL DIFF
+
+Allow:
+
+```text
+Compare versions
+```
+
+Example:
+
+```text
+v1 → v2
+
+Growth:
+20% → 15%
+
+Price:
+$39 → $49
+
+Churn:
+5% → 6%
+```
+
+Then:
+
+```text
+Impact on MRR:
+-$420K
+
+Impact on cash:
+-$310K
+```
+
+---
+
+# 96. AI MODEL REVIEW
+
+After creating a model, AI should review it.
+
+Example:
+
+```text
+Model review
+
+✓ Revenue model defined
+✓ Customer acquisition defined
+✓ Churn defined
+✓ Variable costs defined
+
+⚠ Payroll not defined
+⚠ Starting cash missing
+⚠ Payment processing missing
+
+Simulation confidence: Low
+```
+
+This is far more useful than blindly running the model.
+
+---
+
+# 97. AI SIMULATION COMMANDS
+
+Natural language commands:
+
+```text
+"Increase pricing by 20%."
+
+"Show me what happens if churn doubles."
+
+"Run a downside scenario."
+
+"Which assumption matters most?"
+
+"How much cash will we have in 18 months?"
+
+"Can we afford 5 engineers?"
+
+"Compare hiring vs marketing."
+
+"Why did margin decline?"
+
+"Create a conservative case."
+
+"Run 10,000 simulations."
+```
+
+The AI should execute tools rather than merely explain how the user could do it.
+
+---
+
+# 98. DECISION SUPPORT
+
+The product should answer:
+
+```text
+What changed?
+Why?
+What is driving it?
+What is risky?
+What happens if I change it?
+```
+
+This should be the core product loop:
+
+```text
+MODEL
+ ↓
+SIMULATE
+ ↓
+UNDERSTAND
+ ↓
+CHANGE
+ ↓
+SIMULATE AGAIN
+```
+
+---
+
+# 99. SOFTWARE QUALITY
+
+Do not build a prototype that merely looks good.
+
+Prioritize:
+
+1. Correct financial engine
+2. Deterministic simulation
+3. Valid model schema
+4. Excellent node UX
+5. Clear results
+6. AI reliability
+7. Performance
+8. Visual polish
+
+The UI must never hide incorrect calculations.
+
+---
+
+# 100. DEVELOPMENT ORDER
+
+Build in this exact order.
+
+## Phase 1
+
+Simulation engine.
+
+Implement:
+
+```text
+Node
+Connection
+Parameter
+Time
+Formula
+State
+```
+
+Then:
+
+```text
+Input
+Growth
+Conversion
+Revenue
+Cost
+Cash
+```
+
+---
+
+## Phase 2
+
+Node editor.
+
+Implement:
+
+```text
+React Flow
+Custom nodes
+Ports
+Connections
+Properties panel
+Undo/redo
+Save/load
+```
+
+---
+
+## Phase 3
+
+Financial dashboard.
+
+Implement:
+
+```text
+MRR
+ARR
+Revenue
+COGS
+Gross margin
+Cash
+Burn
+Runway
+Customers
+```
+
+---
+
+## Phase 4
+
+Scenarios.
+
+Implement:
+
+```text
+Base
+Upside
+Downside
+Custom
+```
+
+---
+
+## Phase 5
+
+Monte Carlo.
+
+Implement:
+
+```text
+Distributions
+Seeds
+Web Workers
+P10/P50/P90
+Histogram
+Risk probabilities
+```
+
+---
+
+## Phase 6
+
+AI.
+
+Implement:
+
+```text
+Ollama provider
+Structured outputs
+Model generation
+Tool calling
+Validation
+Repair
+```
+
+---
+
+## Phase 7
+
+Reports.
+
+Implement:
+
+```text
+Executive
+Financial
+Risk
+Scenario
+Monte Carlo
+```
+
+---
+
+## Phase 8
+
+HERE template.
+
+Implement all HERE-specific nodes and assumptions.
+
+---
+
+# 101. NON-GOALS FOR V1
+
+Do NOT build initially:
+
+* accounting integrations
+* bank connections
+* Stripe sync
+* QuickBooks
+* payroll integrations
+* real-time collaboration
+* enterprise permissions
+* complex cap tables
+* tax modeling
+* GAAP accounting
+* investor CRM
+* automated bookkeeping
+* live market data
+* mobile model editor
+
+These can come later.
+
+---
+
+# 102. SUCCESS CRITERIA
+
+A new user who knows almost nothing about finance should be able to:
+
+1. Open the application.
+2. Choose "AI SaaS."
+3. Enter:
+
+   * price
+   * customers
+   * growth
+   * churn
+   * COGS
+   * fixed costs
+4. See a visual model.
+5. Run a 24-month simulation.
+6. Understand MRR.
+7. Understand cash.
+8. Understand gross margin.
+9. Change an assumption.
+10. See the impact.
+11. Run 1,000 Monte Carlo simulations.
+12. Understand P10/P50/P90.
+13. Export a report.
+
+Target:
+
+> A first useful simulation should take less than 5 minutes.
+
+---
+
+# 103. MOST IMPORTANT PRODUCT DIFFERENTIATOR
+
+Do not compete by having more financial features.
+
+Compete on:
+
+```text
+SIMPLICITY
++
+VISUAL MODELING
++
+SIMULATION
++
+AI
+```
+
+The product should feel like:
+
+> "n8n for business models."
+
+Not:
+
+> "Excel with prettier charts."
+
+---
+
+# 104. FINAL ENGINEERING PRINCIPLE
+
+Separate these completely:
+
+```text
+UI
+↓
+Model representation
+↓
+Simulation engine
+↓
+Results
+↓
+AI interpretation
+```
+
+The AI is NOT the financial engine.
+
+The UI is NOT the financial engine.
+
+The database is NOT the financial engine.
+
+The simulation engine is the source of truth.
+
+Architecture:
+
+```text
+                 ┌───────────────┐
+                 │      UI       │
+                 └───────┬───────┘
+                         │
+                 ┌───────▼───────┐
+                 │  MODEL GRAPH  │
+                 └───────┬───────┘
+                         │
+              ┌──────────▼──────────┐
+              │ SIMULATION ENGINE   │
+              │                     │
+              │ formulas            │
+              │ time                │
+              │ state               │
+              │ scenarios           │
+              │ Monte Carlo         │
+              └──────────┬──────────┘
+                         │
+                 ┌───────▼───────┐
+                 │    RESULTS    │
+                 └───────┬───────┘
+                         │
+          ┌──────────────┴──────────────┐
+          ↓                             ↓
+     DASHBOARD                         AI
+                                     ANALYSIS
+```
+
+---
+
+# 105. FINAL DELIVERABLE FROM THE CODING AGENT
+
+Do not only generate the UI.
+
+Deliver:
+
+### Product
+
+* working web application
+* onboarding
+* node canvas
+* node library
+* properties panel
+* simulation controls
+* dashboard
+* timeline
+* reports
+* scenarios
+* Monte Carlo
+* AI model builder
+* Ollama integration
+
+### Engineering
+
+* typed model schema
+* simulation engine
+* formula engine
+* Monte Carlo engine
+* validation
+* deterministic seeds
+* Web Worker execution
+* tests
+* error handling
+
+### Templates
+
+At minimum:
+
+```text
+AI SaaS
+Subscription SaaS
+Usage SaaS
+Credit-based SaaS
+```
+
+### Documentation
+
+Create:
+
+```text
+README.md
+
+/docs
+  architecture.md
+  simulation-engine.md
+  node-system.md
+  formula-engine.md
+  monte-carlo.md
+  ai-agent.md
+  ollama.md
+  design-system.md
+  testing.md
+```
+
+---
+
+# 106. FINAL QUALITY BAR
+
+Before declaring the product complete, verify:
+
+### UX
+
+* Can a non-finance user build a model?
+* Is every important concept understandable?
+* Can users understand why a number changed?
+* Are errors understandable?
+
+### Simulation
+
+* Are calculations deterministic?
+* Are units consistent?
+* Are circular dependencies detected?
+* Are Monte Carlo results reproducible?
+* Can every metric be traced to inputs?
+
+### AI
+
+* Does AI create valid graph JSON?
+* Does AI use tools?
+* Does AI ask when assumptions are missing?
+* Does AI avoid inventing financial outputs?
+* Does Ollama work locally?
+
+### Performance
+
+* Does the canvas remain smooth?
+* Does Monte Carlo avoid freezing the UI?
+* Is the initial bundle small?
+* Are charts lazy-loaded?
+* Can the app run comfortably on Vercel Hobby?
+
+### Trust
+
+* Are actuals, assumptions, forecasts and simulations clearly distinguished?
+* Does every AI assumption have a source?
+* Can users inspect formulas?
+* Can simulations be reproduced?
+
+If any of these fail, do not consider the MVP finished.

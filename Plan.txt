@@ -1,0 +1,1954 @@
+# AI AGENT EXECUTION PLAN
+
+## Visual Financial Simulator
+
+You are building a production-quality financial simulation application.
+
+Do not attempt to build the entire product at once.
+
+Work through the phases below in order.
+
+Each phase has:
+
+* Objective
+* Tasks
+* Deliverables
+* Validation
+* Definition of done
+
+Do not move to the next phase until the current phase passes its validation requirements.
+
+---
+
+# PHASE 0 — UNDERSTAND THE PRODUCT
+
+## Objective
+
+Before writing code, understand the product architecture.
+
+The product is:
+
+> A visual business-model builder where users connect business assumptions into a graph, simulate the business over time, run scenarios and Monte Carlo simulations, and understand the resulting financial outcomes.
+
+The core loop is:
+
+```text
+DEFINE BUSINESS
+      ↓
+BUILD MODEL
+      ↓
+SIMULATE
+      ↓
+UNDERSTAND
+      ↓
+CHANGE ASSUMPTIONS
+      ↓
+SIMULATE AGAIN
+```
+
+The application should feel like:
+
+```text
+n8n
++
+Figma
++
+financial simulator
++
+AI copilot
+```
+
+---
+
+## Tasks
+
+Before coding:
+
+1. Inspect the repository.
+2. Identify existing framework and dependencies.
+3. Identify existing UI components.
+4. Identify existing authentication.
+5. Identify existing database.
+6. Identify deployment configuration.
+7. Identify existing design system.
+8. Identify existing AI integrations.
+9. Identify existing environment variables.
+10. Identify existing testing setup.
+
+Do not replace existing infrastructure unnecessarily.
+
+---
+
+## Deliverable
+
+Create:
+
+```text
+/docs/product-architecture.md
+```
+
+Include:
+
+```text
+Product goal
+User personas
+Core workflow
+Major modules
+Technical architecture
+Data flow
+Simulation architecture
+AI architecture
+Deployment architecture
+```
+
+---
+
+## Definition of Done
+
+You can explain the entire application architecture before implementing it.
+
+---
+
+# PHASE 1 — DEFINE THE DOMAIN MODEL
+
+## Objective
+
+Create the foundational data model.
+
+Do NOT build the UI yet.
+
+---
+
+## Create these concepts
+
+```text
+Model
+Node
+Connection
+Parameter
+Scenario
+Simulation
+SimulationResult
+TimelinePoint
+Metric
+Guardrail
+Report
+Template
+```
+
+---
+
+## Node types
+
+Initially support:
+
+```text
+INPUT
+GROWTH
+ACQUISITION
+CONVERSION
+CUSTOMERS
+CHURN
+SPLIT
+PRICE
+REVENUE
+COST
+POOL
+FLOW
+CAPACITY
+CONDITION
+FORMULA
+```
+
+---
+
+## Define TypeScript schemas
+
+Use Zod.
+
+Every model must be serializable to JSON.
+
+Example:
+
+```typescript
+Model {
+  id
+  name
+  description
+  version
+  nodes[]
+  connections[]
+  parameters[]
+  scenarios[]
+  settings
+}
+```
+
+---
+
+## Validation
+
+Validate:
+
+* unique IDs
+* valid node types
+* valid connections
+* valid parameter types
+* valid formulas
+* valid scenario references
+* no malformed graph
+
+---
+
+## Deliverable
+
+Create:
+
+```text
+/packages/model-schema
+```
+
+Files:
+
+```text
+types.ts
+schemas.ts
+validators.ts
+index.ts
+```
+
+---
+
+## Definition of Done
+
+A complete financial model can be represented as JSON without any UI dependency.
+
+---
+
+# PHASE 2 — BUILD THE FORMULA ENGINE
+
+## Objective
+
+Build a safe financial calculation engine.
+
+Never use:
+
+```javascript
+eval()
+```
+
+Never execute arbitrary user JavaScript.
+
+---
+
+## Support
+
+```text
++
+-
+*
+/
+%
+()
+```
+
+Functions:
+
+```text
+min()
+max()
+average()
+sum()
+abs()
+round()
+if()
+```
+
+Later:
+
+```text
+previous()
+lag()
+growth()
+```
+
+---
+
+## Example
+
+Input:
+
+```text
+customers = 100
+price = 39
+```
+
+Formula:
+
+```text
+customers * price
+```
+
+Result:
+
+```text
+3900
+```
+
+---
+
+## Add unit handling
+
+Support:
+
+```text
+USD
+INR
+customers
+users
+credits
+percent
+months
+years
+```
+
+Prevent invalid calculations where possible.
+
+Example:
+
+```text
+$100 × 50 customers
+```
+
+is valid.
+
+But:
+
+```text
+20 customers + $500
+```
+
+should produce a validation warning.
+
+---
+
+## Money precision
+
+Use Decimal.js or equivalent.
+
+Do not rely on floating-point arithmetic for financial values.
+
+---
+
+## Tests
+
+Write unit tests for every supported operation.
+
+---
+
+## Definition of Done
+
+Formula engine works independently from React.
+
+---
+
+# PHASE 3 — BUILD THE TIME ENGINE
+
+## Objective
+
+Create the engine that moves the business forward through time.
+
+Support:
+
+```text
+daily
+weekly
+monthly
+quarterly
+yearly
+```
+
+Default:
+
+```text
+monthly
+```
+
+---
+
+## Simulation settings
+
+```text
+startDate
+timeStep
+horizon
+seed
+```
+
+Example:
+
+```text
+Start:
+2027-01
+
+Step:
+1 month
+
+Horizon:
+24 months
+```
+
+---
+
+## Simulation loop
+
+Implement:
+
+```text
+initialize state
+
+for each timestep:
+
+    resolve inputs
+
+    resolve dependencies
+
+    calculate flows
+
+    update pools
+
+    calculate metrics
+
+    evaluate conditions
+
+    record timeline state
+```
+
+---
+
+## Important
+
+Simulation execution must be deterministic.
+
+Same:
+
+```text
+model
+parameters
+seed
+```
+
+must produce identical results.
+
+---
+
+## Definition of Done
+
+A simple 24-month simulation can run entirely without a UI.
+
+---
+
+# PHASE 4 — BUILD BASIC FINANCIAL NODES
+
+Implement these first:
+
+```text
+Input
+Growth
+Customers
+Conversion
+Churn
+Price
+Revenue
+Cost
+Cash
+```
+
+---
+
+## Example model
+
+```text
+Signups
+  ↓
+Conversion
+  ↓
+Customers
+  ↓
+Price
+  ↓
+Revenue
+```
+
+Parallel:
+
+```text
+Customers
+  ↓
+Cost
+```
+
+Then:
+
+```text
+Revenue
+  ↓
+Cash
+```
+
+---
+
+## Acceptance test
+
+Use:
+
+```text
+Signups = 800/month
+Growth = 20%
+Conversion = 7%
+Price = $39
+Churn = 5%
+COGS = $8/customer
+Fixed costs = $20,000/month
+Starting cash = $500,000
+```
+
+Run 24 months.
+
+Verify every monthly result manually for at least the first 3 months.
+
+---
+
+## Definition of Done
+
+The financial engine correctly calculates:
+
+```text
+customers
+revenue
+cost
+gross profit
+cash
+```
+
+over time.
+
+---
+
+# PHASE 5 — BUILD THE DEPENDENCY GRAPH
+
+## Objective
+
+Make the simulator understand which nodes depend on which other nodes.
+
+Example:
+
+```text
+Growth
+ ↓
+Signups
+ ↓
+Conversion
+ ↓
+Customers
+ ↓
+Revenue
+```
+
+If Growth changes:
+
+```text
+Growth
+ ↓
+Signups
+ ↓
+Customers
+ ↓
+Revenue
+```
+
+should recalculate.
+
+Unrelated nodes should not.
+
+---
+
+## Implement
+
+```text
+dependency graph
+topological sorting
+cycle detection
+downstream invalidation
+```
+
+---
+
+## Circular dependency
+
+Detect:
+
+```text
+A → B → C → A
+```
+
+Show:
+
+```text
+Circular dependency detected.
+```
+
+---
+
+## Definition of Done
+
+Changing one assumption recalculates only affected downstream nodes.
+
+---
+
+# PHASE 6 — BUILD THE CANVAS
+
+## Objective
+
+Create the visual modeling interface.
+
+Use:
+
+```text
+React Flow
+Material UI
+Zustand
+```
+
+---
+
+## Layout
+
+```text
+┌────────────┬─────────────────────────────┬──────────────┐
+│ Node       │                             │ Properties   │
+│ Library    │           Canvas            │              │
+│            │                             │              │
+│            │                             │              │
+└────────────┴─────────────────────────────┴──────────────┘
+```
+
+---
+
+## Implement
+
+Canvas:
+
+* pan
+* zoom
+* select
+* multi-select
+* connect
+* delete
+* duplicate
+* copy/paste
+* minimap
+* snap-to-grid
+
+---
+
+## Keyboard shortcuts
+
+```text
+Cmd/Ctrl + Z
+Cmd/Ctrl + Shift + Z
+Delete
+Cmd/Ctrl + C
+Cmd/Ctrl + V
+Cmd/Ctrl + S
+Cmd/Ctrl + K
+```
+
+---
+
+## Definition of Done
+
+A user can visually create:
+
+```text
+Input
+ ↓
+Growth
+ ↓
+Conversion
+ ↓
+Customers
+ ↓
+Price
+ ↓
+Revenue
+```
+
+and run the resulting model.
+
+---
+
+# PHASE 7 — BUILD THE NODE LIBRARY
+
+## Objective
+
+Make nodes easy to discover.
+
+Group them:
+
+### Customers
+
+```text
+Acquisition
+Conversion
+Customers
+Churn
+Upgrade
+Downgrade
+Split
+```
+
+### Revenue
+
+```text
+Price
+Subscription
+Usage
+Top-up
+Revenue Recognition
+```
+
+### Costs
+
+```text
+Fixed Cost
+Variable Cost
+Percentage Cost
+Step Cost
+```
+
+### Resources
+
+```text
+Pool
+Flow
+Burn
+Capacity
+```
+
+### Logic
+
+```text
+Condition
+Trigger
+Formula
+```
+
+---
+
+## UX
+
+Search:
+
+```text
+"churn"
+```
+
+should find:
+
+```text
+Churn
+```
+
+Drag node to canvas.
+
+---
+
+## Definition of Done
+
+A new user can find any basic node in under 5 seconds.
+
+---
+
+# PHASE 8 — BUILD THE PROPERTIES PANEL
+
+## Objective
+
+Make node configuration extremely simple.
+
+Selecting a node opens:
+
+```text
+Properties
+```
+
+Example:
+
+```text
+Monthly Growth
+
+Value
+[ 20 ] %
+
+Uncertainty
+[ Low ▼ ]
+
+Source
+[ User assumption ▼ ]
+```
+
+Advanced settings should remain collapsed.
+
+---
+
+## Every parameter should support
+
+```text
+name
+value
+unit
+min
+max
+distribution
+source
+description
+```
+
+---
+
+## Definition of Done
+
+A user can modify assumptions without touching formulas.
+
+---
+
+# PHASE 9 — BUILD THE FINANCIAL DASHBOARD
+
+## Objective
+
+Show simulation results clearly.
+
+Top cards:
+
+```text
+MRR
+ARR
+Customers
+Gross Margin
+Cash
+Burn
+Runway
+Break-even
+```
+
+---
+
+## Charts
+
+Build:
+
+```text
+MRR
+Revenue vs COGS
+Gross Margin
+Customers
+Cash
+Burn
+Runway
+```
+
+---
+
+## Important
+
+Charts must be derived from simulation results.
+
+Never create fake/demo values once real simulation data exists.
+
+---
+
+## Definition of Done
+
+After clicking:
+
+```text
+Run Simulation
+```
+
+the dashboard updates from the actual engine output.
+
+---
+
+# PHASE 10 — BUILD THE TIMELINE
+
+## Objective
+
+Allow users to inspect every simulation period.
+
+Timeline:
+
+```text
+M1 M2 M3 M4 M5 ... M24
+```
+
+Click Month 12.
+
+Show:
+
+```text
+Revenue
+COGS
+Gross Profit
+Customers
+New Customers
+Churn
+Cash
+Burn
+Runway
+```
+
+---
+
+## Monthly events
+
+Show:
+
+```text
+Break-even reached
+Margin warning
+Cash warning
+Capacity exceeded
+```
+
+---
+
+## Definition of Done
+
+Every simulation timestep is inspectable.
+
+---
+
+# PHASE 11 — BUILD SCENARIOS
+
+## Objective
+
+Allow users to ask:
+
+> "What if?"
+
+Create:
+
+```text
+Base
+Upside
+Downside
+```
+
+Users can duplicate scenarios.
+
+Example:
+
+```text
+Base
+↓
+Pricing +20%
+```
+
+Only override changed assumptions.
+
+---
+
+## Scenario comparison
+
+Show:
+
+```text
+                    Base      Upside     Downside
+
+MRR                 $1.8M      $2.4M       $900K
+Gross Margin         61%        64%         48%
+Cash                 $1.2M      $1.8M       $420K
+Runway                14mo       19mo         6mo
+```
+
+---
+
+## Definition of Done
+
+Users can change assumptions without modifying the base model.
+
+---
+
+# PHASE 12 — BUILD MONTE CARLO
+
+## Objective
+
+Turn uncertainty into probability distributions.
+
+User defines:
+
+```text
+Growth
+10–30%
+
+Conversion
+5–9%
+
+Churn
+3–7%
+```
+
+Run:
+
+```text
+1,000 simulations
+```
+
+---
+
+## Implement
+
+```text
+seeded RNG
+distribution sampling
+parallel/chunked execution
+P10
+P25
+P50
+P75
+P90
+mean
+min
+max
+```
+
+---
+
+## Browser execution
+
+Use:
+
+```text
+Web Worker
+```
+
+Do not freeze the main UI.
+
+---
+
+## Show progress
+
+```text
+Running...
+
+432 / 1,000
+```
+
+---
+
+## Results
+
+```text
+P10 MRR = $820K
+P50 MRR = $1.8M
+P90 MRR = $3.4M
+```
+
+Also:
+
+```text
+Probability of profitability
+Probability of cash-out
+Probability of reaching target MRR
+```
+
+---
+
+## Definition of Done
+
+Monte Carlo can run 1,000 simulations without freezing the UI.
+
+---
+
+# PHASE 13 — BUILD SENSITIVITY ANALYSIS
+
+## Objective
+
+Answer:
+
+> "What matters most?"
+
+Calculate the impact of assumptions.
+
+Example:
+
+```text
+Month 24 MRR sensitivity
+
+Growth        ███████████████
+Conversion    ███████████
+Churn         █████████
+Price         ███████
+CAC           ████
+Hosting       ██
+```
+
+---
+
+## Definition of Done
+
+The system can identify the assumptions with the largest effect on selected outputs.
+
+---
+
+# PHASE 14 — BUILD GUARDRAILS
+
+## Objective
+
+Let users define financial limits.
+
+Examples:
+
+```text
+Gross Margin > 55%
+Runway > 6 months
+Churn < 8%
+CAC Payback < 12 months
+Cash > $0
+```
+
+---
+
+## Timeline behavior
+
+```text
+Month 1 ✓
+Month 2 ✓
+Month 3 ⚠
+Month 4 ⚠
+```
+
+Click warning:
+
+```text
+Gross margin fell below 55%.
+
+Cause:
+AI cost increased faster than revenue.
+```
+
+---
+
+## Definition of Done
+
+Guardrails automatically evaluate every simulation timestep.
+
+---
+
+# PHASE 15 — BUILD REPORT GENERATION
+
+## Objective
+
+Turn simulation results into an understandable business report.
+
+Sections:
+
+```text
+Executive Summary
+Current State
+Assumptions
+Revenue
+Costs
+Profitability
+Cash
+Runway
+Customers
+Risks
+Sensitivity
+Scenarios
+Monte Carlo
+```
+
+---
+
+## Important
+
+Reports must be generated from engine data.
+
+AI may explain results.
+
+AI must not invent results.
+
+---
+
+# PHASE 16 — BUILD AI PROVIDER LAYER
+
+## Objective
+
+Create provider-independent AI architecture.
+
+Implement:
+
+```typescript
+interface LLMProvider {
+  chat()
+  stream()
+  structured()
+  tools()
+}
+```
+
+First provider:
+
+```text
+Ollama
+```
+
+---
+
+## Ollama
+
+Support:
+
+```text
+OLLAMA_BASE_URL
+OLLAMA_MODEL
+```
+
+Default local URL:
+
+```text
+http://localhost:11434
+```
+
+Allow model selection.
+
+---
+
+## Definition of Done
+
+The app can connect to a locally running Ollama instance.
+
+---
+
+# PHASE 17 — BUILD AI MODEL GENERATOR
+
+## Objective
+
+Allow users to describe a business in natural language.
+
+Example:
+
+> "I run an AI SaaS with 1,000 visitors per month, 5% conversion, $39 pricing, 4% churn and $8 COGS."
+
+AI should create:
+
+```text
+Signups
+ ↓
+Conversion
+ ↓
+Customers
+ ↓
+Price
+ ↓
+Revenue
+
+Customers
+ ↓
+COGS
+```
+
+---
+
+## AI pipeline
+
+```text
+Prompt
+ ↓
+Intent extraction
+ ↓
+Business entities
+ ↓
+Assumptions
+ ↓
+Graph JSON
+ ↓
+Schema validation
+ ↓
+Model validation
+ ↓
+Canvas
+```
+
+---
+
+# PHASE 18 — BUILD AI TOOL CALLING
+
+Implement tools:
+
+```text
+create_node
+update_node
+delete_node
+
+connect_nodes
+disconnect_nodes
+
+get_model
+get_node
+
+create_scenario
+update_assumption
+
+validate_model
+
+run_simulation
+run_monte_carlo
+
+get_metric
+get_timeline
+
+run_sensitivity_analysis
+explain_metric
+```
+
+---
+
+## Critical rule
+
+AI should never directly manipulate the database.
+
+AI should operate through validated tools.
+
+---
+
+# PHASE 19 — BUILD AI REPAIR LOOP
+
+When AI produces invalid model JSON:
+
+```text
+AI
+ ↓
+Zod validation
+ ↓
+ERROR
+ ↓
+AI repair
+ ↓
+Validation
+```
+
+Maximum:
+
+```text
+3 attempts
+```
+
+If still invalid:
+
+Show the user the problem.
+
+Do not silently create a broken model.
+
+---
+
+# PHASE 20 — BUILD AI ASSUMPTION REVIEW
+
+AI-created assumptions must be marked:
+
+```text
+User provided
+AI inferred
+Template
+Benchmark
+Imported
+```
+
+Example:
+
+```text
+Payment fee
+2.9%
+
+AI suggested
+
+Confidence:
+Low
+```
+
+User can:
+
+```text
+Accept
+Edit
+Reject
+```
+
+---
+
+# PHASE 21 — BUILD AI "WHY?"
+
+For every metric, support:
+
+```text
+Why?
+```
+
+Example:
+
+```text
+Why is MRR $1.8M?
+```
+
+AI retrieves the dependency graph and explains:
+
+```text
+MRR
+↓
+Customers
+↓
+Conversion
+↓
+Signups
+↓
+Growth
+```
+
+The explanation must use engine-generated values.
+
+---
+
+# PHASE 22 — BUILD AI "WHAT IF?"
+
+Support commands:
+
+```text
+Increase pricing by 20%.
+
+What happens if churn doubles?
+
+Run a downside scenario.
+
+What happens if AI costs increase 50%?
+
+Compare hiring vs marketing.
+
+Run 10,000 simulations.
+```
+
+AI should execute tools.
+
+Do not just answer conversationally.
+
+---
+
+# PHASE 23 — BUILD CURRENT STATE
+
+Allow the user to enter current business data.
+
+Example:
+
+```text
+Current MRR
+Current customers
+Current cash
+Current growth
+Current churn
+Current expenses
+Current stage
+```
+
+Show:
+
+```text
+CURRENT STATE
+```
+
+separately from:
+
+```text
+FORECAST
+```
+
+---
+
+# PHASE 24 — ACTUALS VS FORECAST
+
+Support:
+
+```text
+Actual
+Forecast
+```
+
+Timeline:
+
+```text
+Jan Feb Mar Apr | May Jun Jul Aug
+ A   A   A   A  | F   F   F   F
+```
+
+Use actual data as the starting point for forecasts.
+
+---
+
+# PHASE 25 — BUILD BUSINESS STAGE
+
+Support:
+
+```text
+Idea
+Pre-launch
+Pre-seed
+Seed
+Growth
+Scale
+```
+
+Use stage only to customize:
+
+* onboarding
+* templates
+* metrics
+* explanations
+* recommendations
+
+Do not modify core financial formulas automatically based on stage.
+
+---
+
+# PHASE 26 — BUILD TEMPLATES
+
+Create:
+
+```text
+SaaS
+AI SaaS
+Usage SaaS
+Credit SaaS
+Marketplace
+API business
+```
+
+First sophisticated template:
+
+```text
+HERE
+```
+
+---
+
+# PHASE 27 — BUILD HERE MODEL
+
+Implement:
+
+```text
+Signal
+Prime
+Studio
+World
+Dedicated
+```
+
+Implement:
+
+```text
+Credits
+Credit grants
+Credit wallet
+Credit burn
+Breakage
+Top-ups
+```
+
+Implement:
+
+```text
+AI costs
+Guardian costs
+Hosting
+Storage
+Payment fees
+```
+
+Implement:
+
+```text
+MRR
+COGS
+Gross Margin
+Contribution
+NRR
+Cash
+Runway
+WSCB
+```
+
+Do not hardcode HERE logic into the core simulation engine.
+
+Build reusable nodes and compose them into the HERE template.
+
+---
+
+# PHASE 28 — BUILD EXPORT
+
+Support:
+
+```text
+JSON
+CSV
+PDF
+```
+
+Export:
+
+```text
+Model
+Assumptions
+Timeline
+Results
+Scenarios
+Monte Carlo
+Reports
+```
+
+---
+
+# PHASE 29 — BUILD MODEL VERSIONING
+
+Every save creates a model version.
+
+Store:
+
+```text
+Graph
+Parameters
+Scenarios
+Settings
+Simulation seed
+```
+
+Allow:
+
+```text
+Compare versions
+Restore version
+Duplicate version
+```
+
+---
+
+# PHASE 30 — PERFORMANCE OPTIMIZATION
+
+After functionality works:
+
+Profile.
+
+Measure:
+
+```text
+Initial load
+Canvas interaction
+Node creation
+Model update
+Single simulation
+Monte Carlo
+Chart rendering
+```
+
+Optimize only after measuring.
+
+---
+
+## Requirements
+
+Use:
+
+```text
+memoization
+dependency invalidation
+Web Workers
+dynamic imports
+lazy loading
+code splitting
+```
+
+Avoid unnecessary dependencies.
+
+---
+
+# PHASE 31 — SECURITY REVIEW
+
+Check:
+
+* formula injection
+* arbitrary code execution
+* XSS
+* unsafe AI output
+* API key exposure
+* unauthorized model access
+* malformed model JSON
+* SQL injection
+* unsafe file uploads
+
+Never expose private LLM API keys in browser code.
+
+---
+
+# PHASE 32 — TESTING
+
+Create:
+
+### Unit tests
+
+For:
+
+```text
+formula engine
+financial calculations
+time engine
+dependency engine
+Monte Carlo
+guardrails
+```
+
+### Integration tests
+
+For:
+
+```text
+model → simulation → results
+```
+
+### AI tests
+
+Use fixed prompts and expected structured outputs.
+
+### E2E
+
+Test:
+
+```text
+Create model
+Add node
+Connect nodes
+Edit parameter
+Run simulation
+View dashboard
+Create scenario
+Run Monte Carlo
+Export report
+```
+
+---
+
+# PHASE 33 — DESIGN QA
+
+Review every screen.
+
+Check:
+
+* spacing
+* typography
+* contrast
+* loading states
+* empty states
+* error states
+* hover states
+* keyboard navigation
+* responsive behavior
+
+The interface should feel coherent.
+
+---
+
+# PHASE 34 — PERFORMANCE QA
+
+Test on:
+
+```text
+MacBook
+mid-range Windows laptop
+Chrome
+Safari
+```
+
+Test with:
+
+```text
+10 nodes
+50 nodes
+100 nodes
+500 nodes
+```
+
+and:
+
+```text
+100
+1,000
+10,000
+Monte Carlo runs
+```
+
+Do not optimize prematurely for unrealistic graph sizes, but identify clear failure points.
+
+---
+
+# PHASE 35 — FINAL PRODUCT TEST
+
+A new user should be able to do this:
+
+```text
+Open app
+ ↓
+Choose AI SaaS
+ ↓
+Describe business
+ ↓
+AI creates model
+ ↓
+Review assumptions
+ ↓
+Run simulation
+ ↓
+See dashboard
+ ↓
+Inspect Month 12
+ ↓
+Ask "Why?"
+ ↓
+Change pricing
+ ↓
+Run scenario
+ ↓
+Run Monte Carlo
+ ↓
+Export report
+```
+
+Target:
+
+> Complete the entire flow in under 10 minutes.
+
+---
+
+# PHASE 36 — FINAL REVIEW
+
+Before declaring complete, answer:
+
+## Product
+
+Can a non-finance founder use it?
+
+## UX
+
+Can they understand the graph?
+
+## Simulation
+
+Are calculations correct?
+
+## AI
+
+Can AI create valid models?
+
+## Explainability
+
+Can every result be traced to assumptions?
+
+## Performance
+
+Does the UI stay responsive?
+
+## Reliability
+
+Are simulations reproducible?
+
+## Deployment
+
+Can it run on Vercel Hobby?
+
+## Local AI
+
+Does Ollama work?
+
+## Security
+
+Can users safely provide financial information?
+
+If any answer is "no", fix it before completion.
+
+---
+
+# AGENT BEHAVIOR RULES
+
+Throughout the entire implementation:
+
+1. Do not rewrite working infrastructure without a reason.
+2. Do not add dependencies unnecessarily.
+3. Do not build mock functionality and leave it disconnected.
+4. Do not hardcode simulation results.
+5. Do not let AI invent financial outputs.
+6. Do not use eval.
+7. Do not block the main browser thread with Monte Carlo.
+8. Do not hide assumptions.
+9. Do not hide formulas.
+10. Do not silently repair invalid financial models.
+11. Do not create fake metrics.
+12. Do not claim a feature is complete until it works end-to-end.
+13. Prefer simple implementations.
+14. Keep simulation logic independent of UI.
+15. Keep AI logic independent of simulation calculations.
+16. Write tests for financial formulas.
+17. Use deterministic seeds.
+18. Keep the application Vercel-friendly.
+19. Optimize only after measuring.
+20. When uncertain, preserve correctness over visual polish.
+
+---
+
+# DEVELOPMENT CHECKPOINT FORMAT
+
+After every phase, report:
+
+```text
+PHASE:
+[phase number]
+
+COMPLETED:
+- ...
+
+FILES CREATED:
+- ...
+
+FILES MODIFIED:
+- ...
+
+TESTS:
+- ...
+
+VALIDATION:
+PASS / FAIL
+
+KNOWN ISSUES:
+- ...
+
+NEXT PHASE:
+[phase number]
+```
+
+Do not skip phases.
+
+Do not claim PASS if a requirement is incomplete.
+
+---
+
+# FINAL SUCCESS CRITERION
+
+The product is successful when a founder can say:
+
+> "I don't know finance, but I can describe my business, see how it works as a visual model, change an assumption, run the business forward 24 months, understand what will happen, see the risks, compare scenarios, and understand why the simulator produced those results."
+
+That is the product.

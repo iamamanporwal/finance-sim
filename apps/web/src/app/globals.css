@@ -1,0 +1,11 @@
+html,
+body {
+  height: 100%;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+}
