@@ -34,7 +34,7 @@ export interface AgentResult {
 const MAX_RESULT_CHARS = 8000;
 
 export function toolDefinitions(tools: readonly AgentTool<never>[]): ToolDefinition[] {
-  return tools.map((t) => ({ name: t.name, description: t.description, parameters: z.toJSONSchema(t.parameters as z.ZodType) as Record<string, unknown> }));
+  return tools.map((t) => ({ name: t.name, description: t.description, parameters: z.toJSONSchema(t.parameters as z.ZodType, { io: "input", unrepresentable: "any" }) as Record<string, unknown> }));
 }
 
 /** Runs one tool call safely: unknown tools, bad arguments and handler errors become error results. */

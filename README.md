@@ -19,7 +19,17 @@ See [PRD.TXT](PRD.TXT) for the product and [Plan.txt](Plan.txt) for the phased b
 | 8 | Properties panel (value, uncertainty, source; advanced collapsed) | Done |
 | 9 | Results dashboard (KPI cards, charts, What changed?) | Done |
 | 10 | Timeline (every period inspectable, events, guardrails) | Done |
-| 11+ | Scenarios UI, Monte Carlo, sensitivity, AI… | Not started |
+| 11 | Scenarios (overrides only, Base/Upside/Downside, comparison) | Done |
+| 12 | Monte Carlo in a Web Worker (P10–P90, probabilities, histogram) | Done |
+| 13 | Sensitivity analysis ("What matters most?") | Done |
+| 14 | Guardrails (every period, engine-computed causes) | Done |
+| 15 | Report generation from engine data | Done |
+| 16 | AI provider layer (Ollama, server-side proxy) | Done |
+| 17 | AI model generator (extraction → review → deterministic build) | Done |
+| 18 | AI tool calling (copilot with 19 validated tools) | Done |
+| 19 | AI repair loop (max 3 repairs) | Done |
+| 20 | AI assumption review (accept/edit/reject) | Done |
+| 21+ | "Why?", what-if commands, current state, templates… | Not started |
 
 ## Layout
 
@@ -28,7 +38,10 @@ apps/web/             Next.js App Router UI (canvas, library, properties, dashbo
 packages/
   formula-engine/     tokenizer, parser, Decimal evaluator, unit checking. No eval.
   model-schema/       Zod schemas, TS types, node catalog, metrics, validators, example model
-  simulation-engine/  time engine, dependency graph, node evaluators, Simulator, financial aggregation
+  simulation-engine/  time engine, dependency graph, node evaluators, Simulator, sensitivity, scenarios, explanations
+  monte-carlo/        seeded sampling, statistics, incremental runs (used by the Web Worker)
+  reports/            report generation and Markdown export
+  ai/                 LLM provider interface, Ollama, proxy, agent loop, repair loop
 docs/                 architecture and engine docs
 ```
 
@@ -36,7 +49,7 @@ docs/                 architecture and engine docs
 
 ```bash
 pnpm install
-pnpm dev         # http://localhost:3000 → /app
+pnpm dev         # http://localhost:3000 → /app  (optional local AI: see docs/ollama.md)
 pnpm build       # production build of apps/web
 pnpm test        # vitest, all packages
 pnpm typecheck   # tsc --noEmit

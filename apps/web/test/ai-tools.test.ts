@@ -132,3 +132,13 @@ describe("copilot tools", () => {
     expect(h.model.parameters.find((p) => p.id === "p_price")!.value).toBe(46.8);
   });
 });
+
+describe("tool argument leniency", () => {
+  it("accepts slug-style names and unknown scenario kinds", async () => {
+    const h = harness();
+    const r = await h.call("create_scenario", { name: "Churn double", kind: "what_if", changes: [{ parameter_id: "monthly_churn", value: 0.1 }] });
+    expect(r.ok).toBe(true);
+    expect(h.model.scenarios.find((s) => s.name === "Churn double")!.kind).toBe("custom");
+    expect((await h.call("compare_scenarios", { scenarios: ["churn_double"] })).ok).toBe(true);
+  });
+});

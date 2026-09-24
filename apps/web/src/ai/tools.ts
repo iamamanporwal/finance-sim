@@ -38,20 +38,23 @@ const scenarioArg = z.string().optional().describe("Scenario ID or name. Omit fo
 
 class ToolError extends Error {}
 
+/** "Churn double", "churn_double" and "churn-double" all match. */
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
 export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
   const model = () => ctx.getModel();
   const currency = () => model().settings.currency as Currency;
   const fmt = (key: string, v: number | null | undefined) => formatMetric(key, v ?? null, currency());
   const node = (id: string) => {
     const m = model();
-    const n = m.nodes.find((x) => x.id === id) ?? m.nodes.find((x) => x.label.toLowerCase() === id.toLowerCase());
+    const n = m.nodes.find((x) => x.id === id) ?? m.nodes.find((x) => slug(x.label) === slug(id));
     if (!n) throw new ToolError(`No node "${id}". Call get_model to see node IDs.`);
     return n;
   };
   const scenarioId = (s?: string) => {
     if (!s || (s === "base" && !model().scenarios.some((x) => x.id === "base"))) return undefined;
     const m = model();
-    const found = m.scenarios.find((x) => x.id === s) ?? m.scenarios.find((x) => x.name.toLowerCase() === s.toLowerCase());
+    const found = m.scenarios.find((x) => x.id === s) ?? m.scenarios.find((x) => slug(x.name) === slug(s));
     if (!found) throw new ToolError(`No scenario "${s}". Existing: ${m.scenarios.map((x) => `${x.name} (${x.id})`).join(", ") || "none"}.`);
     return found.id;
   };
@@ -68,7 +71,7 @@ export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
   const paramFor = (args: { parameter_id?: string; node_id?: string; slot?: string }) => {
     const m = model();
     if (args.parameter_id) {
-      const p = m.parameters.find((x) => x.id === args.parameter_id) ?? m.parameters.find((x) => x.name.toLowerCase() === args.parameter_id!.toLowerCase());
+      const p = m.parameters.find((x) => x.id === args.parameter_id) ?? m.parameters.find((x) => slug(x.name) === slug(args.parameter_id!));
       if (!p) throw new ToolError(`No assumption "${args.parameter_id}". Call get_model to list assumptions.`);
       return p;
     }
@@ -270,7 +273,11 @@ export function createCopilotTools(ctx: ToolContext): AgentTool<never>[] {
       description: "Create a what-if scenario that overrides some assumptions without touching the base model.",
       parameters: z.object({
         name: z.string().min(1).max(80),
-        kind: z.enum(["upside", "downside", "custom"]).default("custom"),
+        kind: z
+          .string()
+          .optional()
+          .transform((k): "upside" | "downside" | "custom" => (k === "upside" || k === "downside" ? k : "custom"))
+          .describe("upside, downside or custom"),
         based_on: scenarioArg,
         changes: z
           .array(z.object({ parameter_id: z.string().describe("Assumption ID or name"), value: z.number().optional(), change_percent: z.number().optional() }))
